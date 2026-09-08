@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --watch --env-file=.env src/server.js",
-    "db:check": "node --env-file=.env scripts/check-db.js"
+    "db:check": "node --env-file=.env scripts/check-db.js",
+    "migrate:extract": "node scripts/migrate/extract-source.mjs",
+    "migrate:seed": "node --env-file=.env scripts/migrate/seed-mongo.mjs",
+    "migrate:merge": "node --env-file=.env scripts/migrate/merge-localstorage.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",
