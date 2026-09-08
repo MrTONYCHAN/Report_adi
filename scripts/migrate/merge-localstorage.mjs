@@ -47,21 +47,64 @@ const blobs = files.map((f) => ({
 const newer = (a, b) => !a || String(b.at) > String(a.at);   // ISO strings sort correctly
 
 try {
-  // A dry run never opens a connection, so the merge plan — especially the
-  // version renumbering — can be reviewed from a machine that cannot reach the
-  // cluster. With no roster to match against, everyone reads as a new member.
-  const db = DRY ? null : await getDb();
+  // A dry run still wants the roster, because who a record is attributed to is
+  // most of what there is to preview. But it must also work from a machine that
+  // cannot reach the cluster - the version renumbering is worth checking on its
+  // own - so a failed connection degrades to an empty roster rather than
+  // stopping, and says so, since every author will then read as new.
+  let db = null;
+  let offline = false;
+  try {
+    db = await getDb();
+  } catch (err) {
+    if (!DRY) throw err;
+    offline = true;
+    console.warn(`Cannot reach the database (${err.message}).`);
+    console.warn('Previewing without a roster: every author will look new, and');
+    console.warn('attribution cannot be checked. Version renumbering is still accurate.');
+    console.warn('');
+  }
   const roster = db ? await db.collection('team').find({}).toArray() : [];
 
   /* ---- resolve a person to a roster row ---------------------------------
-     Matched on name, never on slot: slots collide (removing Developer 3 and
-     adding one produces a second "Developer 4"), names identify a person. */
-  const byName = new Map(roster.map((m) => [(m.name || '').trim().toUpperCase(), m]));
+     Slot first, then name.
+
+     The page writes both alongside every record, and which one identifies a
+     person depends on the document. Here the roster carries CHANDAN twice -
+     once as Developer 1 and once as Remediation - so matching on name alone
+     would file all of his Developer 1 work under Remediation. Slots are unique
+     on this roster, so they are the better key.
+
+     Name is still the fallback, because a slot can be renamed between someone
+     taking their export and this running, and because a browser that predates a
+     slot change will carry the old label. */
+  const bySlot = new Map(roster.map((m) => [m.slot, m]));
+  const byName = new Map();
+  for (const m of roster) {
+    const key = (m.name || '').trim().toUpperCase();
+    // Only unambiguous names are usable as a fallback; a duplicated one tells
+    // us nothing about which row was meant.
+    if (!key) continue;
+    byName.set(key, byName.has(key) ? null : m);
+  }
+
   const pending = [];
+  const unresolved = new Set();
   const resolve = (name, slot, area) => {
-    const key = (name || '').trim().toUpperCase();
-    if (!key) return null;
-    if (byName.has(key)) return byName.get(key);
+    const nameKey = (name || '').trim().toUpperCase();
+    if (!nameKey) return null;
+
+    if (slot && bySlot.has(slot)) return bySlot.get(slot);
+    const byNameHit = byName.get(nameKey);
+    if (byNameHit) return byNameHit;
+    if (byNameHit === null) {
+      // The name is on the roster more than once and the slot did not match
+      // any of them, so there is no honest way to pick. Say so rather than
+      // guessing at attribution.
+      unresolved.add(`${name} (${slot || 'no slot'})`);
+      return null;
+    }
+
     const member = {
       memberKey: `d${Date.now().toString(36)}${pending.length}`,
       slot: slot || 'Developer',
@@ -70,7 +113,8 @@ try {
       order: roster.length + pending.length,
       active: true,
     };
-    byName.set(key, member);
+    bySlot.set(member.slot, member);
+    byName.set(nameKey, member);
     pending.push(member);
     return member;
   };
@@ -147,8 +191,35 @@ try {
   console.log(`  tracking updates    ${tracking.size}`);
   console.log(`  wording edits       ${edits.size}`);
   console.log(`  log entries         ${history.size}`);
+  // Who ends up credited with what. This is the part worth reading before a
+  // real run: a roster carrying the same name twice makes misattribution easy
+  // and silent, so the split across rows is shown rather than just the totals.
+  const credited = new Map();
+  const credit = (m, what) => {
+    if (!m) return;
+    const row = credited.get(m.memberKey) || { slot: m.slot, name: m.name, tracking: 0, edits: 0, log: 0 };
+    row[what] += 1;
+    credited.set(m.memberKey, row);
+  };
+  for (const rec of tracking.values()) credit({ memberKey: rec.byMemberKey, slot: rec.bySlot, name: rec.byName }, 'tracking');
+  for (const rec of edits.values()) credit({ memberKey: rec.byMemberKey, slot: rec.bySlot, name: rec.byName }, 'edits');
+  for (const { entry } of history.values()) credit({ memberKey: entry.byMemberKey, slot: entry.bySlot, name: entry.byName }, 'log');
+
+  console.log('  attributed to:');
+  for (const [key, r] of [...credited].sort((a, b) => a[0].localeCompare(b[0]))) {
+    console.log(`      ${key.padEnd(6)} ${String(r.name).padEnd(9)} ${String(r.slot).padEnd(14)} ${r.tracking} tracking, ${r.edits} edits, ${r.log} log`);
+  }
   console.log(`  versions            ${versionDocs.length}${renumbered.length ? `  (${renumbered.length} renumbered)` : ''}`);
   for (const d of renumbered) console.log(`      ${d.originalOwner}'s ${d.originalLabel} -> ${d.v}`);
+
+  if (unresolved.size) {
+    // Dropped rather than guessed: attributing a change to the wrong person is
+    // worse than reporting that it could not be placed.
+    console.warn(`
+  ${unresolved.size} author(s) could not be matched to a roster row, and their`);
+    console.warn('  records were skipped. Add the slot to the roster, or rename it to match:');
+    for (const u of unresolved) console.warn(`      ${u}`);
+  }
 
   if (DRY) {
     console.log('\nDry run — nothing written.');
@@ -199,5 +270,5 @@ try {
   console.error('Merge failed:', err.message);
   process.exitCode = 1;
 } finally {
-  await closeDb();
+  if (!offline) await closeDb();
 }

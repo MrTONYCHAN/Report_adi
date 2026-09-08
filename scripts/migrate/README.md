@@ -147,11 +147,20 @@ Merge rules:
   are ordered by when they were actually saved and renumbered into one sequence.
   `originalLabel` and `originalOwner` record where each came from. The dry run
   prints every renumbering.
-- **`team`** → matched on **name, never on slot**. Slots collide: removing
-  Developer 3 then adding one produces a second "Developer 4", and the page's
-  own tally counts log entries by slot string, so the two would claim each
-  other's updates. Names identify a person; `memberKey` is the foreign key
-  everywhere else.
+- **`team`** → matched on **slot first, then name**. Which field identifies a
+  person depends on the document. This roster carries **CHANDAN twice** — once
+  as Developer 1 and once as Remediation — so matching on name alone files all
+  of his Developer 1 work under Remediation. Slots are unique here, so they are
+  the better key; name remains the fallback for a slot renamed since someone
+  took their export. A name that is on the roster more than once and whose slot
+  matches nothing is **skipped and reported**, not guessed at. `memberKey` is
+  the foreign key everywhere else.
+
+The dry run prints who ends up credited with what, split by roster row. Read
+that before a real run — misattribution on a roster with a repeated name is
+easy and silent. It uses the live roster when the cluster is reachable and
+falls back to an empty one (warning first) when it is not, so the version
+renumbering can still be checked offline.
 
 ## Adding a test case afterwards
 
