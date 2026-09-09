@@ -1,0 +1,360 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --shadow-ios: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.18);
+  --shadow-ios-lg: 0 2px 6px rgb(16 24 40 / 0.05), 0 24px 60px -24px rgb(16 24 40 / 0.26);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.975 0.004 250);
+  --foreground: oklch(0.21 0.03 260);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.965 0.006 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 260);
+  --primary: oklch(0.58 0.19 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.962 0.008 250);
+  --secondary-foreground: oklch(0.3 0.03 260);
+  --muted: oklch(0.962 0.008 250);
+  --muted-foreground: oklch(0.46 0.02 258);
+  --accent: oklch(0.94 0.03 258);
+  --accent-foreground: oklch(0.38 0.13 258);
+  --destructive: oklch(0.58 0.21 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.49 0.12 155);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.52 0.13 65);
+  --warning-foreground: oklch(0.24 0.05 60);
+  --info: oklch(0.49 0.12 230);
+  --border: oklch(0.915 0.008 255);
+  --input: oklch(0.915 0.008 255);
+  --ring: oklch(0.58 0.19 258);
+  --chart-neutral: oklch(0.82 0.01 250);
+  --chart-1: oklch(0.78 0.11 258);
+  --chart-2: oklch(0.81 0.1 155);
+  --chart-3: oklch(0.84 0.1 75);
+  --chart-4: oklch(0.79 0.11 25);
+  --chart-5: oklch(0.81 0.09 300);
+  --sidebar: oklch(0.99 0.002 250);
+  --sidebar-foreground: oklch(0.28 0.03 260);
+  --sidebar-primary: oklch(0.58 0.19 258);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.015 258);
+  --sidebar-accent-foreground: oklch(0.38 0.13 258);
+  --sidebar-border: oklch(0.92 0.008 255);
+  --sidebar-ring: oklch(0.58 0.19 258);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+}
+
+@utility glass-panel {
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+@utility card-ios {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-ios);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
+
+  &:hover {
+    transform: none;
+    box-shadow: var(--shadow-ios);
+    border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
+  }
+}
+
+@utility press {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@utility rise {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+
+@utility sheen {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in oklab, var(--primary) 10%, transparent) 50%,
+      transparent 80%
+    );
+    transform: translateX(-120%);
+  }
+
+  &:hover::after {
+    animation: shimmer-sweep 0.9s ease forwards;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@utility live-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+/* Keep the original working layout, with calmer motion and visible keyboard focus. */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+button,
+select {
+  cursor: pointer;
+}
+[id] {
+  scroll-margin-top: 150px;
+}
+:target:not(main) {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: -5rem;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: 0.5rem;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+.record-list > li {
+  align-items: center;
+}
+@media (min-width: 1280px) {
+  .record-list > li[id] {
+    display: grid;
+    grid-template-columns: 4rem minmax(200px, 1fr) minmax(140px, 0.65fr) 90px 100px 60px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dark theme. The class lands on <html>, so these tokens match the same element
+   as :root and win on document order. Chart fills stay light-on-dark rather than
+   inverting, so a defect that reads as red in one theme reads as red in both. */
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.17 0.021 262);
+  --foreground: oklch(0.955 0.008 250);
+  --surface: oklch(0.213 0.021 262);
+  --surface-2: oklch(0.247 0.022 262);
+  --card: oklch(0.213 0.021 262);
+  --card-foreground: oklch(0.955 0.008 250);
+  --popover: oklch(0.225 0.022 262);
+  --popover-foreground: oklch(0.955 0.008 250);
+  --primary: oklch(0.68 0.16 259);
+  --primary-foreground: oklch(0.16 0.03 262);
+  --secondary: oklch(0.268 0.021 262);
+  --secondary-foreground: oklch(0.92 0.01 250);
+  --muted: oklch(0.268 0.021 262);
+  --muted-foreground: oklch(0.735 0.019 256);
+  --accent: oklch(0.318 0.05 259);
+  --accent-foreground: oklch(0.87 0.08 259);
+  --destructive: oklch(0.7 0.18 25);
+  --destructive-foreground: oklch(0.16 0.03 262);
+  --success: oklch(0.74 0.15 156);
+  --success-foreground: oklch(0.16 0.03 262);
+  --warning: oklch(0.8 0.13 74);
+  --warning-foreground: oklch(0.18 0.04 60);
+  --info: oklch(0.72 0.13 231);
+  --border: oklch(0.303 0.018 260);
+  --input: oklch(0.303 0.018 260);
+  --ring: oklch(0.68 0.16 259);
+  --chart-neutral: oklch(0.44 0.012 255);
+  --chart-1: oklch(0.7 0.13 259);
+  --chart-2: oklch(0.73 0.13 156);
+  --chart-3: oklch(0.78 0.12 76);
+  --chart-4: oklch(0.7 0.14 25);
+  --chart-5: oklch(0.72 0.12 300);
+  --sidebar: oklch(0.196 0.021 262);
+  --sidebar-foreground: oklch(0.9 0.01 250);
+  --sidebar-primary: oklch(0.68 0.16 259);
+  --sidebar-primary-foreground: oklch(0.16 0.03 262);
+  --sidebar-accent: oklch(0.3 0.045 259);
+  --sidebar-accent-foreground: oklch(0.9 0.07 259);
+  --sidebar-border: oklch(0.29 0.018 260);
+  --sidebar-ring: oklch(0.68 0.16 259);
+  --shadow-ios: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.65);
+  --shadow-ios-lg: 0 2px 6px rgb(0 0 0 / 0.45), 0 24px 60px -24px rgb(0 0 0 / 0.75);
+}
+
+/* The rail collapses to icons rather than sliding off-screen, so navigation
+   stays one click away on a wide monitor with the sidebar tucked in. */
+.sidebar-shell {
+  transition:
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar-label {
+  transition:
+    opacity 0.2s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-collapsed="true"] .sidebar-label {
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+}
+
+/* The kanban scroller keeps a slim, theme-aware scrollbar instead of the heavy
+   default one, which on a short board reads as a second border. */
+.kanban {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+  scroll-padding-inline: 0.25rem;
+}
+.kanban::-webkit-scrollbar {
+  height: 8px;
+}
+.kanban::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kanban::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
+  border-radius: 999px;
+}
+.kanban::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+}
+
+/* Registers are read by scanning down a long list, so the header row stays put
+   while the body scrolls under it. */
+.sticky-head thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  backdrop-filter: blur(8px);
+}

@@ -37,7 +37,7 @@ if (DRY) {
   console.log(`  testcases   ${testcases.length}  (${cases} cases, ${findings} findings)`);
   console.log(`  tracking    ${seeded} cases carrying the 6 Sep remediation`);
   console.log('  versions    0  (none exist until someone clicks Save version)');
-  console.log('\nDry run - no connection opened, nothing written.');
+  console.log('\nDry run — no connection opened, nothing written.');
   process.exit(0);
 }
 
