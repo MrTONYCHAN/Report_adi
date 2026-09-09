@@ -186,7 +186,8 @@ export function dashboardApi(options = {}) {
         const json = (_res, code, payload) => ({ code, payload });
         if (pathname === "/api/dashboard" && req.method === "GET") {
           const store = withAutomation(readStore());
-          return json(res, 200, { ...report, ...overlay(store) });
+          const { sourceExports, ...publicReport } = report;
+          return json(res, 200, { ...publicReport, ...overlay(store) });
         }
 
         if (pathname === "/api/items" && req.method === "POST") {

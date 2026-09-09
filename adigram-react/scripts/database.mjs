@@ -9,7 +9,8 @@ import {
   loadBundle,
   configuredClient,
 } from "../server/migration.mjs";
-import { COLLECTIONS } from "../server/mongo.mjs";
+import { COLLECTIONS, createMongoRepository, ensureCollections } from "../server/mongo.mjs";
+import { mergeBrowserExports } from "../server/browser-migration.mjs";
 
 const [command, argument] = process.argv.slice(2);
 const target = path.resolve(argument || "migration-data.json");
@@ -45,7 +46,28 @@ try {
   } else {
     client = await configuredClient();
     const dbName = process.env.MONGODB_DB || "adigrams_dashboard";
-    if (command === "import")
+    if (command === "merge-browser") {
+      if (!argument) throw new Error("Supply the directory of browser JSON exports.");
+      const files = fs
+        .readdirSync(target)
+        .filter((name) => name.endsWith(".json"))
+        .sort()
+        .map((name) => ({ name, raw: fs.readFileSync(path.join(target, name), "utf8") }));
+      if (!files.length) throw new Error("No browser exports found");
+      await ensureCollections(client.db(dbName));
+      const repository = createMongoRepository();
+      try {
+        console.log(
+          JSON.stringify(
+            await repository.run(({ report }) => mergeBrowserExports(report, files)),
+            null,
+            2,
+          ),
+        );
+      } finally {
+        await repository.close();
+      }
+    } else if (command === "import")
       console.log(JSON.stringify(await importBundle(client, dbName, loadBundle(target)), null, 2));
     else if (command === "export") {
       fs.writeFileSync(target, JSON.stringify(await exportDatabase(client, dbName), null, 2), {

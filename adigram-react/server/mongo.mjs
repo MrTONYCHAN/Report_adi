@@ -14,10 +14,11 @@ export const COLLECTIONS = [
   "workflowRules",
   "versions",
   "counters",
+  "sourceExports",
 ];
 
 export function documentsFor(report, store) {
-  const { testcases, team, versions = [], ...metadata } = report;
+  const { testcases, team, versions = [], sourceExports = [], ...metadata } = report;
   return {
     reportMetadata: [{ ...metadata, _id: "report" }],
     testcases: testcases.filter((r) => r.kind === "case").map((r) => ({ ...r, _id: r.caseId })),
@@ -33,6 +34,7 @@ export function documentsFor(report, store) {
     automationEvents: store.automation.map((value, i) => ({ ...value, _id: String(i), order: i })),
     workflowRules: Object.entries(store.rules).map(([key, enabled]) => ({ _id: key, enabled })),
     versions: versions.map((value, i) => ({ ...value, _id: String(value.seq ?? i) })),
+    sourceExports: sourceExports.map((value) => ({ ...value, _id: value.sha256 })),
     counters: ["task", "bug"].map((kind) => ({
       _id: kind,
       value: Math.max(
@@ -57,6 +59,7 @@ export function dataFrom(documents) {
       testcases: [...documents.testcases, ...documents.findings].map(clean),
       team: documents.developers.map(clean).sort((a, b) => a.order - b.order),
       versions: documents.versions.map(clean),
+      sourceExports: documents.sourceExports.map(clean),
     },
     store: {
       version: 1,

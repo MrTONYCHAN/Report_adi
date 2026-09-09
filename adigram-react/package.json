@@ -18,7 +18,8 @@
     "db:import": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs import",
     "db:export": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs export",
     "db:check": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs check",
-    "db:local": "node scripts/local-mongo.mjs"
+    "db:local": "node scripts/local-mongo.mjs",
+    "db:merge-browser": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs merge-browser"
   },
   "overrides": {
     "rolldown": "1.2.1"

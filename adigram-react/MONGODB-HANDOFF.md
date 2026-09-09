@@ -66,12 +66,20 @@ needed: the running application reads and writes MongoDB exclusively.
 | `workflowRules`    | Rule ID          | Enabled/disabled configuration for workflow rules                 |
 | `versions`         | Version sequence | Imported saved versions, when present                             |
 | `counters`         | task / bug       | Last allocated item number, retained after deletion               |
+| `sourceExports`    | SHA-256 checksum | Original browser exports, filenames and completeness flags        |
 
-The initial report contains **50 test cases, 8 findings and 5 roster entries**, with
-**24 recorded status-history entries** embedded in the source records. No standalone
-dashboard tasks, bugs, overrides or saved versions existed locally at extraction.
-Their collections are created empty. The Tasks and Bugs screens also derive work
+The handoff contains **50 test cases, 8 findings, 5 roster entries, 160 status-history
+entries and 21 saved versions**, after merging the four developer exports. Original
+exports are preserved verbatim in `sourceExports`. No standalone dashboard tasks,
+bugs or overrides existed locally; those collections are created empty.
+The Tasks and Bugs screens also derive work
 from the report records; these are not duplicated as separate `tasks`/`bugs` documents.
+
+**Source limitation:** `vinay.json` was truncated at 5,000 characters. Its 29 complete
+current-status records and 19 complete log entries were recovered; the missing tail
+cannot be reconstructed. Its archived export has `complete: false`. The other three
+exports are complete. A fresh Vinay export can be merged later without duplicating
+existing history or versions.
 
 Readiness totals, charts and contributor metrics are calculated from these records.
 They are not stored as separate totals that could become inconsistent. Browser-only
@@ -84,6 +92,18 @@ imports all collections in one transaction. An identical import is a no-op, pres
 subsequent edits. Importing a different bundle into a populated database is refused.
 Use a new database name when restoring a newer backup; there is no destructive force mode.
 Do not run the repository root's older `migrate:seed` scripts against this database.
+
+Merge additional browser exports into an initialized database:
+
+```sh
+npm run db:merge-browser -- /path/to/developer-exports
+```
+
+This accepts normal JSON, double-encoded JSON and console-quoted JSON. It preserves
+raw exports, merges newer tracking using timestamps, unions history, and retains each
+version's original owner and label while assigning unique shared version numbers.
+Unzoned source timestamps are interpreted as India time (+05:30); timestamps ending
+in `Z` retain their UTC meaning. The command reports incomplete files explicitly.
 
 Export current MongoDB data, including edits made after the first import:
 

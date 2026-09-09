@@ -11,33 +11,28 @@ import { reportSchema } from "../src/lib/data.ts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { startLocalDatabase } from "./local-database.mjs";
 
 test("local MongoDB data survives a clean stop and restart", { timeout: 120000 }, async () => {
   const dbPath = mkdtempSync(join(tmpdir(), "adigrams-persistence-test-"));
   let server;
   let client;
   try {
-    server = await MongoMemoryReplSet.create({
-      instanceOpts: [{ dbPath }],
-      replSet: { name: "persistence", count: 1, storageEngine: "wiredTiger" },
-    });
-    const port = new URL(server.getUri()).port;
-    client = new MongoClient(server.getUri());
+    server = await startLocalDatabase({ dbPath, port: 0, name: "persistence" });
+    const port = new URL(server.uri).port;
+    client = new MongoClient(server.uri);
     await client.db("persistence_test").collection("probe").insertOne({ _id: "saved", value: 42 });
     await client.close();
-    await server.stop({ doCleanup: false });
-    server = await MongoMemoryReplSet.create({
-      instanceOpts: [{ dbPath, port: Number(port) }],
-      replSet: { name: "persistence", count: 1, storageEngine: "wiredTiger" },
-    });
-    client = new MongoClient(server.getUri());
+    await server.stop();
+    server = await startLocalDatabase({ dbPath, port: Number(port), name: "persistence" });
+    client = new MongoClient(server.uri);
     assert.equal(
       (await client.db("persistence_test").collection("probe").findOne({ _id: "saved" })).value,
       42,
     );
   } finally {
     if (client) await client.close();
-    if (server) await server.stop({ doCleanup: false });
+    if (server) await server.stop();
     rmSync(dbPath, { recursive: true, force: true });
   }
 });

@@ -6,7 +6,8 @@ The React dashboard is in [`adigram-react`](adigram-react/README.md). Its comple
 MongoDB migration and friend setup instructions are in
 [`MONGODB-HANDOFF.md`](adigram-react/MONGODB-HANDOFF.md). Run those commands from
 `adigram-react`; the older root-level API and migration scripts are separate.
-Private data exports are distributed directly, not committed to this repository.
+`Data/` contains developer-provided browser migration inputs. Generated MongoDB
+bundles are distributed directly rather than added to the repository.
 
 ## Encrypted published review
 
