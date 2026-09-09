@@ -44,25 +44,31 @@ export function readReport(SOURCE) {
     return m[1];
   };
 
-  const seedSrc = block(/var SEED = \[([\s\S]*?)\n {4}\];/, "the SEED array");
-  const seedBy = src.match(/var SEED_BY = "([^"]+)"/)[1];
-  const seedSlot = src.match(/var SEED_SLOT = "([^"]+)"/)[1];
-
-  const seeds = [...seedSrc.matchAll(/\{ id: "([^"]+)",\s*s: "([^"]+)",\s*at: "([^"]+)" \}/g)].map(
-    ([, caseId, status, at]) => ({ caseId, status, at }),
-  );
-
-  const teamSrc = block(/var DEFAULT_TEAM = \[([\s\S]*?)\n {4}\];/, "DEFAULT_TEAM");
-  const team = [
-    ...teamSrc.matchAll(/\{ key: "([^"]+)", slot: "([^"]+)", area: "([^"]+)", name: "([^"]*)" \}/g),
-  ].map(([, memberKey, slot, area, name], i) => ({
-    memberKey,
+  // Read string-only records without executing JavaScript from the report.
+  // Published reports use both SEED (6 Sep) and SEED_ROWS / SEED_LOG (7 Sep).
+  const records = (value) =>
+    [...value.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/\{([^{}]*)\}/g)].map(([, fields]) =>
+      Object.fromEntries(
+        [...fields.matchAll(/(\w+)\s*:\s*"([^"\\]*)"/g)].map(([, key, value]) => [key, value]),
+      ),
+    );
+  const array = (name) =>
+    records(block(new RegExp(`var\\s+${name}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*;`), name));
+  const team = array("DEFAULT_TEAM").map(({ key, slot, area, name }, i) => ({
+    memberKey: key,
     slot,
     area,
     name,
     order: i,
     active: true,
   }));
+  const modern = /var\s+SEED_ROWS\s*=/.test(src);
+  const remediation = team.find((member) => member.slot === "Remediation");
+  const seedBy = src.match(/var SEED_BY = "([^"]+)"/)?.[1] ?? remediation?.name;
+  const seedSlot = src.match(/var SEED_SLOT = "([^"]+)"/)?.[1] ?? remediation?.slot;
+  if (!seedBy || !seedSlot) throw new Error("Source is missing remediation attribution");
+  const seeds = array(modern ? "SEED_ROWS" : "SEED");
+  const logs = modern ? array("SEED_LOG") : seeds.map((entry) => ({ ...entry, to: entry.s }));
 
   // The page appends this row itself once the seeded pass is applied, because a
   // name that stamps updates has to exist on the roster to be attributable.
@@ -80,18 +86,30 @@ export function readReport(SOURCE) {
   /* ---- apply the seed onto the cases -------------------------------------- */
 
   const byId = new Map(testcases.map((d) => [d.caseId, d]));
-  const rem = team.find((m) => m.name.toUpperCase() === seedBy.toUpperCase());
   const orphans = [];
-
-  for (const { caseId, status, at } of seeds) {
+  const stampFor = (entry) => {
+    const byName = entry.by ?? seedBy;
+    const bySlot = entry.slot ?? seedSlot;
+    const member = team.find((m) => m.name === byName && m.slot === bySlot);
+    if (!member) throw new Error("Source contains unknown tracking contributor");
+    return { byMemberKey: member.memberKey, byName, bySlot, at: entry.at };
+  };
+  for (const entry of seeds) {
+    const { id: caseId, s: status } = entry;
     const doc = byId.get(caseId);
     if (!doc) {
       orphans.push(caseId);
       continue;
     }
-    const stamp = { byMemberKey: rem.memberKey, byName: seedBy, bySlot: seedSlot, at };
-    doc.tracking = { status, ...stamp };
-    doc.history.push({ kind: "status", from: "open", to: status, ...stamp });
+    doc.tracking = { status, ...stampFor(entry) };
+  }
+  for (const entry of logs) {
+    const doc = byId.get(entry.id);
+    if (!doc) {
+      orphans.push(entry.id);
+      continue;
+    }
+    doc.history.push({ kind: "status", from: "open", to: entry.to, ...stampFor(entry) });
   }
 
   if (orphans.length) {

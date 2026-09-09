@@ -25,6 +25,38 @@ function withSource(fn) {
     rmSync(dir, { recursive: true, force: true });
   }
 }
+test("published report keeps current attribution separate from historical updates", () =>
+  withSource((file) => {
+    const source = report().replace(
+      /var SEED = [\s\S]*/,
+      `var DEFAULT_TEAM = [
+      { key: "dev1",  slot: "Developer 1", area: "Source area", name: "Engineer" },
+      { key: "rem", slot: "Remediation", area: "Review", name: "Reviewer" }
+    ];
+    var SEED_ROWS = [
+      /* The owner signed off after the original remediation. */
+      { id: "D1-01", s: "fixed", by: "Engineer", slot: "Developer 1", at: "2026-09-07T11:00:00" }
+    ];
+    var SEED_LOG = [
+      { at: "2026-09-06T10:00:00", id: "D1-01", to: "prog" },
+      { at: "2026-09-07T11:00:00", id: "D1-01", to: "fixed", by: "Engineer", slot: "Developer 1" }
+    ];`,
+    );
+    writeFileSync(file, source);
+    const parsed = reportSchema.parse(readReport(file));
+    assert.equal(parsed.team.length, 2);
+    assert.equal(parsed.testcases[0].tracking.byMemberKey, "dev1");
+    assert.equal(parsed.testcases[0].tracking.status, "fixed");
+    assert.deepEqual(
+      parsed.testcases[0].history.map((event) => [event.to, event.byMemberKey]),
+      [
+        ["prog", "rem"],
+        ["fixed", "dev1"],
+      ],
+    );
+    writeFileSync(file, source.replace('id: "D1-01", to: "prog"', 'id: "D9-99", to: "prog"'));
+    assert.throws(() => readReport(file), /orphaned tracking updates/);
+  }));
 test("runtime reads reflect changed source records and derived totals", () =>
   withSource((file) => {
     writeFileSync(file, report());
