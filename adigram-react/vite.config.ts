@@ -5,8 +5,8 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { fileURLToPath, URL } from "node:url";
 import { dashboardApi } from "./server/api.mjs";
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "REPORT_");
-  const api = dashboardApi(env["REPORT_SOURCE"]);
+  const env = loadEnv(mode, process.cwd(), "MONGODB_");
+  const api = dashboardApi({ uri: env["MONGODB_URI"], dbName: env["MONGODB_DB"] });
   return {
     plugins: [
       {

@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dashboardApi } from "./api.mjs";
 const root = fileURLToPath(new URL("../dist/", import.meta.url));
-const api = dashboardApi(process.env.REPORT_SOURCE);
+const api = dashboardApi();
 const mime = {
   ".html": "text/html",
   ".js": "text/javascript",

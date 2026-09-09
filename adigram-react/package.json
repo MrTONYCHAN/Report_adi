@@ -12,7 +12,13 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "start": "node --env-file=.env.local server/index.mjs",
-    "test:data": "node --experimental-strip-types --test server/*.test.mjs"
+    "test:data": "node --experimental-strip-types --test server/*.test.mjs",
+    "db:extract": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs extract",
+    "db:validate": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs validate",
+    "db:import": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs import",
+    "db:export": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs export",
+    "db:check": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs check",
+    "db:local": "node scripts/local-mongo.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -57,6 +63,7 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
+    "mongodb": "^6.12.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
@@ -83,12 +90,13 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "mongodb-memory-server": "^11.2.0",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "\u003e=24.0.0"
   }
 }

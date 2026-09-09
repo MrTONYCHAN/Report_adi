@@ -1,5 +1,15 @@
 # ADIGRAMS — Go-Live readiness review
 
+## MongoDB dashboard
+
+The React dashboard is in [`adigram-react`](adigram-react/README.md). Its complete
+MongoDB migration and friend setup instructions are in
+[`MONGODB-HANDOFF.md`](adigram-react/MONGODB-HANDOFF.md). Run those commands from
+`adigram-react`; the older root-level API and migration scripts are separate.
+Private data exports are distributed directly, not committed to this repository.
+
+## Encrypted published review
+
 This repository publishes one page: an encrypted review document served through
 GitHub Pages.
 

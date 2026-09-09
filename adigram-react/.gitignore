@@ -33,3 +33,6 @@ dist-ssr
 
 # The dashboard overlay store (planned work, workflow state) is per-machine.
 server/adigram-store.json
+.mongo-data/
+migration-data*.json
+handoff/

@@ -102,7 +102,7 @@ test("tracking does not overwrite the original assessment; contributor is not as
     assert.equal(data.developers[0].load, 100);
     assert.equal(data.activity.length, 1);
   }));
-test("API has no fixture fallback and does not disclose source paths on failure", () => {
+test("API has no fixture fallback and does not disclose connection details on failure", async () => {
   const headers = {};
   const res = {
     statusCode: 200,
@@ -111,14 +111,16 @@ test("API has no fixture fallback and does not disclose source paths on failure"
       this.body = body;
     },
   };
-  dashboardApi("/nonexistent/private/report.html")(
-    { url: "/api/dashboard", method: "GET" },
-    res,
-    () => assert.fail("unexpected fallthrough"),
-  );
+  await dashboardApi({
+    repository: {
+      run: async () => {
+        throw new Error("mongodb://private:secret@host");
+      },
+    },
+  })({ url: "/api/dashboard", method: "GET" }, res, () => assert.fail("unexpected fallthrough"));
   assert.equal(res.statusCode, 503);
   assert.equal(headers["Cache-Control"], "no-store");
-  assert.ok(!res.body.includes("/nonexistent/private"));
+  assert.ok(!res.body.includes("private:secret"));
   assert.ok(!res.body.includes("testcases"));
 });
 test("malformed API records are rejected instead of displaying made-up totals", () => {
