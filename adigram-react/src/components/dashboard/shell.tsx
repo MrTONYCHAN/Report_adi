@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   RefreshCw,
   AlertTriangle,
+  LockKeyhole,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
@@ -25,6 +26,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { useSignOut } from "@/lib/access";
 import { useDashboard, useDashboardQuery } from "@/lib/data";
 
 const COLLAPSE_KEY = "adigram.sidebar.collapsed";
@@ -50,6 +52,7 @@ export function Shell({
 }) {
   const { activity, bugs, developers, tasks, testCases, totals, sourceUpdatedAt } = useDashboard();
   const { refetch, isFetching, dataUpdatedAt, error } = useDashboardQuery();
+  const signOut = useSignOut();
 
   const nav = [
     { to: "/", label: "Overview", icon: LayoutDashboard, hint: "Readiness" },
@@ -366,6 +369,22 @@ export function Shell({
               </Tooltip>
 
               <ThemeToggle />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => signOut.mutate()}
+                    disabled={signOut.isPending}
+                    aria-label="Lock the dashboard"
+                    className="press grid size-9 place-items-center rounded-full border border-border bg-surface text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <LockKeyhole className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {signOut.isPending ? "Locking…" : "Lock · the access code will be asked again"}
+                </TooltipContent>
+              </Tooltip>
 
               <Popover>
                 <PopoverTrigger asChild>

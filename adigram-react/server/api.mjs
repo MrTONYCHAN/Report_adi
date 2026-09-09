@@ -1,5 +1,5 @@
-import { readReport } from "./report-source.mjs";
-import { readStore, writeStore, nextId } from "./store.mjs";
+import { nextId } from "./store.mjs";
+import { createMongoRepository } from "./mongo.mjs";
 import { runAutomation, canMove, TRANSITIONS, TERMINAL, SLA_DAYS } from "./workflow.mjs";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "unassessed"];
@@ -154,12 +154,11 @@ function patch(item, input, now) {
 
 /* Automation runs on read as well as on write, because a due date passes with
    nobody touching the board. Only a run that actually changed something earns a
-   write back to disk. */
+   update to the MongoDB workflow log. */
 function withAutomation(store) {
   const { fired } = runAutomation(store.items, { enabled: store.rules });
   if (fired.length) {
     store.automation = [...fired, ...store.automation].slice(0, MAX_LOG);
-    writeStore(store);
   }
   return store;
 }
@@ -173,136 +172,142 @@ const overlay = (store) => ({
   slaDays: SLA_DAYS,
 });
 
-export function dashboardApi(source) {
+export function dashboardApi(options = {}) {
+  const repository = options.repository || createMongoRepository(options);
   return async (req, res, next) => {
     const [pathname] = (req.url || "").split("?");
     if (!pathname.startsWith("/api/")) return next();
 
     try {
-      if (pathname === "/api/dashboard" && req.method === "GET") {
-        if (!source) throw new Error("Report source not configured");
-        const store = withAutomation(readStore());
-        return json(res, 200, { ...readReport(source), ...overlay(store) });
-      }
-
-      if (pathname === "/api/items" && req.method === "POST") {
-        const store = readStore();
-        const item = draft(await body(req), store);
-        store.items.push(item);
-        writeStore(store);
-        return json(res, 201, { item, ...overlay(withAutomation(readStore())) });
-      }
-
-      const itemMatch = pathname.match(/^\/api\/items\/([A-Za-z0-9-]{1,40})$/);
-      if (itemMatch) {
-        const store = readStore();
-        const item = store.items.find((i) => i.id === itemMatch[1]);
-        if (!item) return json(res, 404, { error: "No such item" });
-
-        if (req.method === "DELETE") {
-          store.items = store.items.filter((i) => i.id !== item.id);
-          writeStore(store);
-          return json(res, 200, overlay(store));
+      // Consume the request once, outside the retryable database transaction.
+      const requestBody = ["POST", "PATCH"].includes(req.method) ? await body(req) : {};
+      const result = await repository.run(async ({ report, store: currentStore }) => {
+        const readStore = () => currentStore;
+        const json = (_res, code, payload) => ({ code, payload });
+        if (pathname === "/api/dashboard" && req.method === "GET") {
+          const store = withAutomation(readStore());
+          const { sourceExports, ...publicReport } = report;
+          return json(res, 200, { ...publicReport, ...overlay(store) });
         }
-        if (req.method === "PATCH") {
-          const result = patch(item, await body(req), new Date().toISOString());
-          if (result.error) return json(res, 409, { error: result.error });
-          store.automation = [
-            ...result.changes.map((c) => ({ ...c, itemId: item.id, itemTitle: item.title })),
-            ...store.automation,
-          ].slice(0, MAX_LOG);
-          writeStore(store);
-          return json(res, 200, { item, ...overlay(withAutomation(readStore())) });
-        }
-        return json(res, 405, { error: "Use PATCH or DELETE" });
-      }
 
-      /* Records that came out of the report cannot be edited in place, but the
+        if (pathname === "/api/items" && req.method === "POST") {
+          const store = readStore();
+          const item = draft(requestBody, store);
+          store.items.push(item);
+          return json(res, 201, { item, ...overlay(withAutomation(readStore())) });
+        }
+
+        const itemMatch = pathname.match(/^\/api\/items\/([A-Za-z0-9-]{1,40})$/);
+        if (itemMatch) {
+          const store = readStore();
+          const item = store.items.find((i) => i.id === itemMatch[1]);
+          if (!item) return json(res, 404, { error: "No such item" });
+
+          if (req.method === "DELETE") {
+            store.items = store.items.filter((i) => i.id !== item.id);
+            return json(res, 200, overlay(store));
+          }
+          if (req.method === "PATCH") {
+            const result = patch(item, requestBody, new Date().toISOString());
+            if (result.error) return json(res, 409, { error: result.error });
+            store.automation = [
+              ...result.changes.map((c) => ({ ...c, itemId: item.id, itemTitle: item.title })),
+              ...store.automation,
+            ].slice(0, MAX_LOG);
+            return json(res, 200, { item, ...overlay(withAutomation(readStore())) });
+          }
+          return json(res, 405, { error: "Use PATCH or DELETE" });
+        }
+
+        /* Records that came out of the report cannot be edited in place, but the
          board still has to be able to move them. The move is kept as an
          override keyed by case id and replayed over the report on every read. */
-      const recordMatch = pathname.match(/^\/api\/records\/([A-Za-z0-9-]{1,40})$/);
-      if (recordMatch && req.method === "PATCH") {
-        const input = await body(req);
-        const store = readStore();
-        const id = recordMatch[1];
-        const now = new Date().toISOString();
-        const by = text(input.by, 120, "Dashboard user");
-        const previous = store.overrides[id];
-        const status = text(input.status, 24);
-        const kind = input.kind === "bug" ? "bug" : "task";
-        if (!TRANSITIONS[kind][status]) return json(res, 400, { error: "Unknown status" });
+        const recordMatch = pathname.match(/^\/api\/records\/([A-Za-z0-9-]{1,40})$/);
+        if (recordMatch && req.method === "PATCH") {
+          const input = requestBody;
+          const store = readStore();
+          const id = recordMatch[1];
+          if (!report.testcases.some((record) => record.caseId === id))
+            return json(res, 404, { error: "No such report record" });
+          const now = new Date().toISOString();
+          const by = text(input.by, 120, "Dashboard user");
+          const previous = store.overrides[id];
+          const status = text(input.status, 24);
+          const kind = input.kind === "bug" ? "bug" : "task";
+          if (!TRANSITIONS[kind][status]) return json(res, 400, { error: "Unknown status" });
 
-        store.overrides[id] = {
-          kind,
-          status,
-          assignee: text(input.assignee, 120, previous?.assignee || ""),
-          dueDate: "dueDate" in input ? day(input.dueDate) : (previous?.dueDate ?? null),
-          startDate: "startDate" in input ? day(input.startDate) : (previous?.startDate ?? null),
-          by,
-          at: now,
-        };
-        store.automation = [
-          { at: now, by, kind: "status", itemId: id, to: status, note: "Report record moved" },
-          ...store.automation,
-        ].slice(0, MAX_LOG);
-        writeStore(store);
-        return json(res, 200, overlay(store));
-      }
+          store.overrides[id] = {
+            kind,
+            status,
+            assignee: text(input.assignee, 120, previous?.assignee || ""),
+            dueDate: "dueDate" in input ? day(input.dueDate) : (previous?.dueDate ?? null),
+            startDate: "startDate" in input ? day(input.startDate) : (previous?.startDate ?? null),
+            by,
+            at: now,
+          };
+          store.automation = [
+            { at: now, by, kind: "status", itemId: id, to: status, note: "Report record moved" },
+            ...store.automation,
+          ].slice(0, MAX_LOG);
+          return json(res, 200, overlay(store));
+        }
 
-      /* The roster comes from the report, where the names are often still slot
+        /* The roster comes from the report, where the names are often still slot
          placeholders ("Developer 1"). Corrections are kept as an overlay keyed
          by member so the report file is never rewritten, and clearing a field
          falls back to whatever the report said. */
-      const teamMatch = pathname.match(/^\/api\/team\/([A-Za-z0-9_-]{1,40})$/);
-      if (teamMatch && req.method === "PATCH") {
-        const input = await body(req);
-        const store = readStore();
-        const key = teamMatch[1];
+        const teamMatch = pathname.match(/^\/api\/team\/([A-Za-z0-9_-]{1,40})$/);
+        if (teamMatch && req.method === "PATCH") {
+          const input = requestBody;
+          const store = readStore();
+          const key = teamMatch[1];
 
-        // An override for a member the report does not have would never merge
-        // onto anything; refusing it keeps the overlay free of orphans.
-        if (source && !readReport(source).team.some((m) => m.memberKey === key))
-          return json(res, 404, { error: "No such team member" });
+          // An override for a member the report does not have would never merge
+          // onto anything; refusing it keeps the overlay free of orphans.
+          if (!report.team.some((m) => m.memberKey === key))
+            return json(res, 404, { error: "No such team member" });
 
-        const now = new Date().toISOString();
-        const by = text(input.by, 120, "Dashboard user");
+          const now = new Date().toISOString();
+          const by = text(input.by, 120, "Dashboard user");
 
-        const patched = {};
-        for (const [field, max] of [
-          ["name", 120],
-          ["role", 120],
-          ["workstream", 160],
-        ]) {
-          if (field in input) {
-            const value = text(input[field], max);
-            if (value) patched[field] = value;
+          const patched = {};
+          for (const [field, max] of [
+            ["name", 120],
+            ["role", 120],
+            ["workstream", 160],
+          ]) {
+            if (field in input) {
+              const value = text(input[field], max);
+              if (value) patched[field] = value;
+            }
           }
+
+          if (Object.keys(patched).length === 0) {
+            delete store.team[key];
+          } else {
+            store.team[key] = { ...patched, by, at: now };
+          }
+          return json(res, 200, overlay(store));
         }
 
-        if (Object.keys(patched).length === 0) {
-          delete store.team[key];
-        } else {
-          store.team[key] = { ...patched, by, at: now };
+        if (teamMatch && req.method === "DELETE") {
+          const store = readStore();
+          delete store.team[teamMatch[1]];
+          return json(res, 200, overlay(store));
         }
-        writeStore(store);
-        return json(res, 200, overlay(store));
-      }
 
-      if (teamMatch && req.method === "DELETE") {
-        const store = readStore();
-        delete store.team[teamMatch[1]];
-        writeStore(store);
-        return json(res, 200, overlay(store));
-      }
-
-      return json(res, 404, { error: "No such endpoint" });
+        return json(res, 404, { error: "No such endpoint" });
+      });
+      return json(res, result.code, result.payload);
     } catch (error) {
       if (pathname === "/api/dashboard")
         return json(res, 503, {
           error:
-            "The readiness report is unavailable. Check REPORT_SOURCE on the server and try again.",
+            "Dashboard data is unavailable. Check the MongoDB connection and run the database import.",
         });
-      return json(res, 400, { error: error?.message || "The request could not be completed." });
+      return json(res, 503, {
+        error: "The request could not be saved. Check the database connection and request data.",
+      });
     }
   };
 }

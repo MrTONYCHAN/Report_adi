@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "cd adigram-react && npm ci && npm run build",
+  "outputDirectory": "adigram-react/dist",
+  "build": {
+    "env": {
+      "MONGOMS_DISABLE_POSTINSTALL": "1"
+    }
+  },
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+}

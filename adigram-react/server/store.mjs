@@ -60,5 +60,8 @@ export function nextId(store, kind) {
     .filter((i) => i.id.startsWith(`${prefix}-`))
     .map((i) => Number(i.id.slice(prefix.length + 1)))
     .filter(Number.isFinite);
-  return `${prefix}-${Math.max(1000, ...used) + 1}`;
+  store.counters ??= {};
+  const next = Math.max(1000, store.counters[kind] || 0, ...used) + 1;
+  store.counters[kind] = next;
+  return `${prefix}-${next}`;
 }
