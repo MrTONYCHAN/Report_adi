@@ -14,7 +14,14 @@ const configured = (process.env.MONGODB_DNS_SERVERS || '')
 const onlyLoopback = dns
   .getServers()
   .every((s) => s.startsWith('127.') || s === '::1');
-if (configured.length) {
+
+// Never on a managed platform. Vercel's resolver is the one that can reach the
+// cluster, and replacing it with a public pair breaks name resolution instead
+// of fixing it. This workaround exists for one developer machine.
+const managed = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+if (managed) {
+  // leave Node's resolvers alone
+} else if (configured.length) {
   dns.setServers(configured);
 } else if (onlyLoopback) {
   dns.setServers(['1.1.1.1', '8.8.8.8']);

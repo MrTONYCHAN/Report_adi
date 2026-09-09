@@ -1,5 +1,27 @@
 import { MongoClient } from "mongodb";
 import { isDeepStrictEqual } from "node:util";
+import dns from "node:dns";
+
+/* mongodb+srv:// needs an SRV lookup, and Node resolves that with its own
+   resolver rather than the OS stub. On a machine where Node inherits only
+   127.0.0.1, with nothing listening there, the lookup fails with ECONNREFUSED
+   even though the operating system resolves the record fine. Point it at real
+   resolvers when that is all we have.
+
+   Never on a managed platform: Vercel's resolver is the one that can reach the
+   cluster, and replacing it with a public pair breaks resolution rather than
+   fixing it. MONGODB_DNS_SERVERS overrides the default pair. */
+const dnsOverride = (process.env.MONGODB_DNS_SERVERS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const onlyLoopback = dns
+  .getServers()
+  .every((server) => server.startsWith("127.") || server === "::1");
+if (!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)) {
+  if (dnsOverride.length) dns.setServers(dnsOverride);
+  else if (onlyLoopback) dns.setServers(["1.1.1.1", "8.8.8.8"]);
+}
 
 export const COLLECTIONS = [
   "reportMetadata",
@@ -56,7 +78,14 @@ export function dataFrom(documents) {
   return {
     report: {
       ...info,
-      testcases: [...documents.testcases, ...documents.findings].map(clean),
+      // report_adi keeps findings inside testcases under kind:"finding" and
+      // mirrors them into findings as well, so take only the cases from here or
+      // every finding arrives twice. A no-op against a database this app
+      // imported itself, where testcases holds cases alone.
+      testcases: [
+        ...documents.testcases.filter((r) => r.kind !== "finding"),
+        ...documents.findings,
+      ].map(clean),
       team: documents.developers.map(clean).sort((a, b) => a.order - b.order),
       versions: documents.versions.map(clean),
       sourceExports: documents.sourceExports.map(clean),
