@@ -5,3 +5,9 @@ node_modules/
 npm-debug.log*
 
 source-data.json
+
+# Browser exports and the dashboard handoff bundle: tracking data and, in the
+# handoff, the readable review itself. Neither belongs in a repository whose
+# whole point is that it holds nothing readable without the access code.
+Data/
+handoff/
