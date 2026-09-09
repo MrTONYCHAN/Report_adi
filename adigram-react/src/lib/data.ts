@@ -463,10 +463,18 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
 export type Dashboard = ReturnType<typeof deriveDashboard>;
 
 export function useDashboardQuery() {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["dashboard"],
     queryFn: async ({ signal }) => {
       const response = await fetch("/api/dashboard", { signal, cache: "no-store" });
+      /* A session that lapses mid-visit should bring the access gate back,
+         rather than leave the board reporting a data failure the reader has no
+         way to act on. */
+      if (response.status === 401) {
+        void queryClient.invalidateQueries({ queryKey: ["session"] });
+        throw new Error("Your session has ended. Enter the access code again.");
+      }
       if (!response.ok)
         throw new Error("The readiness report is unavailable. Check the data source and retry.");
       return deriveDashboard(reportSchema.parse(await response.json()));

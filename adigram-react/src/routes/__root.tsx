@@ -1,3 +1,4 @@
+import { AccessGate } from "@/components/dashboard/access-gate";
 import { DashboardDataBoundary } from "@/components/dashboard/data-boundary";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -111,9 +112,11 @@ function RootComponent() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <HeadContent />
-        <DashboardDataBoundary>
-          <Outlet key={locationKey} />
-        </DashboardDataBoundary>
+        <AccessGate>
+          <DashboardDataBoundary>
+            <Outlet key={locationKey} />
+          </DashboardDataBoundary>
+        </AccessGate>
       </QueryClientProvider>
     </ThemeProvider>
   );

@@ -3,8 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dashboardApi } from "./api.mjs";
+import { accessGate } from "./access.mjs";
 const root = fileURLToPath(new URL("../dist/", import.meta.url));
-const api = dashboardApi();
+const gate = accessGate();
+const dashboard = dashboardApi();
+// Everything under /api/ passes the access gate before it reaches the data layer.
+const api = (req, res, next) => gate(req, res, () => dashboard(req, res, next));
 const mime = {
   ".html": "text/html",
   ".js": "text/javascript",

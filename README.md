@@ -35,6 +35,42 @@ Until both variables are set the site still loads: the API answers 503 with a
 readable message and the dashboard shows its data-unavailable state rather than
 crashing the function.
 
+## Access gate
+
+The dashboard sits behind an 8-digit access code, entered one digit per box.
+The initial code is `00000000`.
+
+The code is never stored anywhere in the repository or in the deployed bundle.
+What ships is a PBKDF2-SHA256 verifier (210,000 iterations, random salt) in
+[`adigram-react/server/access.mjs`](adigram-react/server/access.mjs); a
+submitted code is hashed and compared against it in constant time. A correct
+code returns an HttpOnly, SameSite=Strict, Secure session cookie holding a
+signed 12-hour expiry, not the code.
+
+The check runs on the server, ahead of the data layer, so `/api/*` answers 401
+to anyone without a session. Reading the JavaScript bundle or calling the API
+directly does not get past it.
+
+To change the code, set one of these in the Vercel project and redeploy:
+
+- `DASHBOARD_ACCESS_CODE` - the new code in plain text, hashed at startup.
+- `DASHBOARD_ACCESS_VERIFIER` - a pre-computed verifier, so the code itself
+  never goes into the environment. Generate one with:
+
+  ```
+  node -e "import('./adigram-react/server/access.mjs').then(m=>console.log(m.hashCode('YOUR-CODE')))"
+  ```
+
+Optionally set `DASHBOARD_SESSION_SECRET` to an independent random string;
+without it the cookie signing key is derived from the verifier, which is
+already unrelated to the code but rotates whenever the code changes.
+
+Be aware of what an 8-digit numeric code is worth: 100 million combinations,
+and no lockout. The per-attempt PBKDF2 cost is the only throttle. It keeps
+casual visitors out of a link that has been shared around; it is not protection
+against a determined attacker, and `00000000` in particular is a first guess.
+Change it before the link goes anywhere public.
+
 ## Encrypted published review
 
 This repository publishes one page: an encrypted review document served through
