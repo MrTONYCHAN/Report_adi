@@ -14,7 +14,15 @@ export function useSessionQuery() {
     queryKey: SESSION_KEY,
     queryFn: async ({ signal }): Promise<Session> => {
       const response = await fetch("/api/session", { signal, cache: "no-store" });
-      if (!response.ok) throw new Error("Sign-in is unavailable. Retry in a moment.");
+      /* The status is carried into the message because the causes need
+         different fixes and the screen is often the only place anyone looks: a
+         404 means the API is not deployed alongside the site at all, a 401 that
+         it is routing the request past the session endpoint, and a 5xx that it
+         is deployed and failing. */
+      if (!response.ok) {
+        const detail = (await response.text().catch(() => "")).slice(0, 200).trim();
+        throw new Error(`Sign-in is unavailable (HTTP ${response.status}). ${detail}`.trim());
+      }
       return (await response.json()) as Session;
     },
     refetchOnWindowFocus: true,
