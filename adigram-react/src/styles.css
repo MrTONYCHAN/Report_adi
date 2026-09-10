@@ -313,9 +313,44 @@ select {
 /* The rail collapses to icons rather than sliding off-screen, so navigation
    stays one click away on a wide monitor with the sidebar tucked in. */
 .sidebar-shell {
+  border-radius: 0 28px 28px 0;
+  overflow: hidden;
+  box-shadow: 4px 0 18px -12px color-mix(in oklab, var(--foreground) 25%, transparent);
   transition:
     width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar-drawer {
+  border-radius: 0 28px 28px 0;
+  overflow: hidden;
+}
+.sidebar-link,
+.sidebar-link-icon {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.sidebar-link:focus-visible {
+  outline: 2px solid var(--sidebar-ring);
+  outline-offset: 2px;
+  background-color: var(--sidebar-accent);
+}
+@media (hover: hover) {
+  .sidebar-link:hover {
+    background-color: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+  .sidebar-link:hover .sidebar-link-icon {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    transform: translateY(-1px);
+  }
+  .sidebar-link[aria-current="page"]:hover {
+    background-color: color-mix(in oklab, var(--sidebar-accent) 85%, var(--primary));
+  }
 }
 .sidebar-label {
   transition:

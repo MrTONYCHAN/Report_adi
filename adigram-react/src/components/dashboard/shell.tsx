@@ -144,10 +144,10 @@ export function Shell({
               onClick={() => setOpen(false)}
               aria-current={active ? "page" : undefined}
               title={railed(mobile) ? item.label : undefined}
-              className={`press flex items-center gap-3 rounded-2xl py-2.5 text-sm font-medium transition-colors ${railed(mobile) ? "justify-center px-2" : "px-3"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-secondary"}`}
+              className={`sidebar-link press flex items-center gap-3 rounded-2xl py-2.5 text-sm font-medium ${railed(mobile) ? "justify-center px-2" : "px-3"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"}`}
             >
               <span
-                className={`grid size-8 shrink-0 place-items-center rounded-xl ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+                className={`sidebar-link-icon grid size-8 shrink-0 place-items-center rounded-xl ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
               >
                 <item.icon className="size-4" />
               </span>
@@ -251,7 +251,7 @@ export function Shell({
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="flex w-[min(272px,90vw)] flex-col gap-0 bg-sidebar p-0"
+                  className="sidebar-drawer flex w-[min(272px,90vw)] flex-col gap-0 bg-sidebar p-0"
                 >
                   <SheetTitle className="sr-only">Workspace navigation</SheetTitle>
                   <SheetDescription className="sr-only">
