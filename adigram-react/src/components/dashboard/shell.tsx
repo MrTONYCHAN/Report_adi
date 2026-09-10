@@ -5,17 +5,14 @@ import {
   ListChecks,
   Bug,
   FlaskConical,
-  Menu,
   Search,
   Bell,
   ShieldCheck,
-  PanelLeftClose,
-  PanelLeftOpen,
   RefreshCw,
   AlertTriangle,
   LockKeyhole,
 } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Sheet,
   SheetContent,
@@ -29,14 +26,15 @@ import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { useSignOut } from "@/lib/access";
 import { useDashboard, useDashboardQuery } from "@/lib/data";
 
-const COLLAPSE_KEY = "adigram.sidebar.collapsed";
-
-function storedCollapsed() {
-  try {
-    return localStorage.getItem(COLLAPSE_KEY) === "true";
-  } catch {
-    return false;
-  }
+/** Three-bar hamburger icon — drawn with plain spans so it needs no icon dep. */
+function HamburgerIcon() {
+  return (
+    <span className="flex flex-col gap-[5px]" aria-hidden="true">
+      <span className="block h-[2px] w-[18px] rounded-full bg-current" />
+      <span className="block h-[2px] w-[18px] rounded-full bg-current" />
+      <span className="block h-[2px] w-[18px] rounded-full bg-current" />
+    </span>
+  );
 }
 
 export function Shell({
@@ -71,7 +69,6 @@ export function Shell({
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(storedCollapsed);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const matches = findings.filter((f) =>
@@ -84,140 +81,85 @@ export function Shell({
     setQuery("");
   }, [pathname]);
 
-  const toggleSidebar = useCallback(() => {
-    setCollapsed((current) => {
-      const next = !current;
-      try {
-        localStorage.setItem(COLLAPSE_KEY, String(next));
-      } catch {
-        // The rail still toggles; only the preference is lost on reload.
-      }
-      return next;
-    });
-  }, []);
-
-  // Ctrl/Cmd+B is the shortcut people already expect from editors and trackers.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
-        event.preventDefault();
-        toggleSidebar();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggleSidebar]);
-
-  const railed = (mobile: boolean) => !mobile && collapsed;
-
-  const sidebar = (mobile = false) => (
-    <div className="flex h-full flex-col" data-collapsed={railed(mobile)}>
-      <div
-        className={`flex items-center gap-3 py-5 ${railed(mobile) ? "justify-center px-2" : "px-5"}`}
-      >
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-5 py-5">
         <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground">
           <ShieldCheck className="size-5" />
         </div>
-        {!railed(mobile) && (
-          <div className="sidebar-label min-w-0">
-            <p className="truncate text-sm font-bold tracking-tight">ADIGRAMS 2.0</p>
-            <p className="truncate text-xs text-muted-foreground">Go-Live Control</p>
-          </div>
-        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold tracking-tight">ADIGRAMS 2.0</p>
+          <p className="truncate text-xs text-muted-foreground">Go-Live Control</p>
+        </div>
       </div>
 
+      {/* Nav */}
       <nav
         aria-label="Workspace"
-        className={`flex-1 space-y-1 overflow-y-auto pb-4 ${railed(mobile) ? "px-2" : "px-3"}`}
+        className="flex-1 space-y-1 overflow-y-auto px-3 pb-4"
       >
-        {!railed(mobile) && (
-          <p className="sidebar-label px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Workspace
-          </p>
-        )}
+        <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Workspace
+        </p>
         {nav.map((item) => {
           const active = pathname === item.to;
-          const link = (
+          return (
             <Link
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
               aria-current={active ? "page" : undefined}
-              title={railed(mobile) ? item.label : undefined}
-              className={`sidebar-link press flex items-center gap-3 rounded-2xl py-2.5 text-sm font-medium ${railed(mobile) ? "justify-center px-2" : "px-3"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"}`}
+              className={`press flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium ${
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground"
+              }`}
             >
               <span
-                className={`sidebar-link-icon grid size-8 shrink-0 place-items-center rounded-xl ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+                className={`grid size-8 shrink-0 place-items-center rounded-xl ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground"
+                }`}
               >
                 <item.icon className="size-4" />
               </span>
-              {!railed(mobile) && (
-                <>
-                  <span className="sidebar-label flex-1">{item.label}</span>
-                  <span className="sidebar-label text-xs text-muted-foreground">{item.hint}</span>
-                </>
-              )}
+              <span className="flex-1">{item.label}</span>
+              <span className="text-xs text-muted-foreground">{item.hint}</span>
             </Link>
-          );
-          if (!railed(mobile)) return link;
-          return (
-            <Tooltip key={item.to}>
-              <TooltipTrigger asChild>{link}</TooltipTrigger>
-              <TooltipContent side="right">
-                {item.label} · {item.hint}
-              </TooltipContent>
-            </Tooltip>
           );
         })}
       </nav>
 
-      {railed(mobile) ? (
-        <div className="p-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => void refetch()}
-                disabled={isFetching}
-                aria-label="Refresh data"
-                className="press grid w-full place-items-center rounded-2xl border border-sidebar-border bg-surface-2 py-3"
-              >
-                <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {totals.passed}/{totals.testCases} passed · {totals.openBugs} open
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      ) : (
-        <div className="sidebar-label m-3 rounded-2xl border border-sidebar-border bg-surface-2 p-4">
-          <p className="flex items-center gap-2 text-xs font-semibold">
-            <span className="size-2 rounded-full bg-success" />
-            Readiness report
+      {/* Status card */}
+      <div className="m-3 rounded-2xl border border-sidebar-border bg-surface-2 p-4">
+        <p className="flex items-center gap-2 text-xs font-semibold">
+          <span className="size-2 rounded-full bg-success" />
+          Readiness report
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          {totals.testCases ? Math.round((totals.passed / totals.testCases) * 100) : 0}% passed ·{" "}
+          {totals.openBugs} open defects.
+        </p>
+        {totals.breached > 0 && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-destructive">
+            <AlertTriangle className="size-3.5" />
+            {totals.breached} past due
           </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            {totals.testCases ? Math.round((totals.passed / totals.testCases) * 100) : 0}% passed ·{" "}
-            {totals.openBugs} open defects.
-          </p>
-          {totals.breached > 0 && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-destructive">
-              <AlertTriangle className="size-3.5" />
-              {totals.breached} past due
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted-foreground">
-            Source updated {new Date(sourceUpdatedAt).toLocaleString("en-IN")}
-          </p>
-          <button
-            className="press mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            <RefreshCw className={`size-3 ${isFetching ? "animate-spin" : ""}`} />
-            {isFetching ? "Refreshing…" : "Refresh data"}
-          </button>
-        </div>
-      )}
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          Source updated {new Date(sourceUpdatedAt).toLocaleString("en-IN")}
+        </p>
+        <button
+          className="press mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+        >
+          <RefreshCw className={`size-3 ${isFetching ? "animate-spin" : ""}`} />
+          {isFetching ? "Refreshing…" : "Refresh data"}
+        </button>
+      </div>
     </div>
   );
 
@@ -227,26 +169,21 @@ export function Shell({
         <a href="#main-content" className="skip-link">
           Skip to content
         </a>
-        <aside
-          className={`sidebar-shell fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-sidebar-border bg-sidebar lg:flex ${collapsed ? "w-[76px]" : "w-[272px]"}`}
-        >
-          {sidebar()}
-        </aside>
 
-        <div className={`min-w-0 ${collapsed ? "lg:pl-[76px]" : "lg:pl-[272px]"}`}>
-          {/* No rule under the header: the blurred panel alone separates it from
-              the page, so the controls inside read as floating rather than boxed. */}
+        {/* Full-width layout — no sidebar offset */}
+        <div className="min-w-0">
           <header className="glass-panel sticky top-0 z-20">
-            {/* Header and main share the same horizontal padding so the page
-                title stays flush with the cards beneath it. */}
             <div className="flex flex-wrap items-center gap-3 px-3 py-3.5">
+
+              {/* Hamburger — visible on ALL screen sizes */}
               <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
                   <button
-                    className="press rounded-xl border border-border bg-surface p-2.5 lg:hidden"
-                    aria-label="Open menu"
+                    className="press rounded-xl border border-border bg-surface p-2.5 text-foreground"
+                    aria-label={open ? "Close menu" : "Open menu"}
+                    aria-expanded={open}
                   >
-                    <Menu className="size-4" />
+                    <HamburgerIcon />
                   </button>
                 </SheetTrigger>
                 <SheetContent
@@ -257,29 +194,9 @@ export function Shell({
                   <SheetDescription className="sr-only">
                     Navigate dashboard sections.
                   </SheetDescription>
-                  {sidebar(true)}
+                  {sidebar}
                 </SheetContent>
               </Sheet>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={toggleSidebar}
-                    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    aria-expanded={!collapsed}
-                    className="press hidden rounded-xl border border-border bg-surface p-2.5 text-muted-foreground transition-colors hover:text-foreground lg:block"
-                  >
-                    {collapsed ? (
-                      <PanelLeftOpen className="size-4" />
-                    ) : (
-                      <PanelLeftClose className="size-4" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {collapsed ? "Expand" : "Collapse"} sidebar · Ctrl + B
-                </TooltipContent>
-              </Tooltip>
 
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-base font-bold tracking-tight sm:text-lg">{title}</h1>
@@ -418,9 +335,6 @@ export function Shell({
             </div>
           </header>
 
-          {/* The width cap is high enough that no ordinary monitor sees a
-              centring gutter; it only stops charts stretching absurdly wide on
-              an ultrawide display. */}
           <main
             id="main-content"
             tabIndex={-1}

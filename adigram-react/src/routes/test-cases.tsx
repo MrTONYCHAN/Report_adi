@@ -5,6 +5,7 @@ import { Shell } from "@/components/dashboard/shell";
 import { EmptyState, Panel, Pill, Toolbar } from "@/components/dashboard/bits";
 import { ExportMenu } from "@/components/dashboard/export-menu";
 import { useDashboard, useMoveCard } from "@/lib/data";
+import type { BugStatus } from "@/lib/data";
 import type { Column } from "@/lib/export";
 
 type TestRow = {
@@ -46,32 +47,62 @@ export const Route = createFileRoute("/test-cases")({
   component: TestCases,
 });
 
+const DEFECT_CYCLE: BugStatus[] = [
+  "untracked",
+  "open",
+  "in-progress",
+  "fixed",
+  "verified",
+  "closed",
+  "wont-fix",
+];
+
+const DEFECT_LABELS: Record<BugStatus, string> = {
+  scheduled: "Scheduled",
+  untracked: "Untracked",
+  open: "Open",
+  "in-progress": "In Progress",
+  blocked: "Blocked",
+  fixed: "Fixed",
+  verified: "Verified",
+  closed: "Closed",
+  "wont-fix": "Won't Fix",
+};
+
+function defectColorClass(status: string) {
+  if (["fixed", "closed", "verified"].includes(status))
+    return "text-[var(--ok)] border-[var(--ok)] bg-[var(--ok-bg)]";
+  if (status === "in-progress")
+    return "text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-soft)]";
+  if (status === "open")
+    return "text-[var(--high)] border-[var(--high)] bg-[var(--high-bg)]";
+  if (status === "blocked")
+    return "text-[var(--crit)] border-[var(--crit)] bg-[var(--crit-bg)]";
+  return "text-muted-foreground border-border bg-surface";
+}
+
 function DefectStatusToggle({ t }: { t: TestRow }) {
   const { move, isPending } = useMoveCard();
-  
-  // Custom styling for specific statuses based on the design system variables
-  const colorClass = 
-    ["fixed", "closed", "verified"].includes(t.defectStatus) 
-      ? "text-[var(--ok)] border-[var(--ok)] bg-[var(--ok-bg)]"
-      : t.defectStatus === "in-progress"
-      ? "text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-soft)]"
-      : "text-muted-foreground border-border bg-surface";
+
+  function handleClick() {
+    if (isPending) return;
+    const idx = DEFECT_CYCLE.indexOf(t.defectStatus as BugStatus);
+    const next = DEFECT_CYCLE[(idx + 1) % DEFECT_CYCLE.length]!;
+    move({ id: t.id, origin: "report" }, "bug", next);
+  }
+
+  const label = DEFECT_LABELS[t.defectStatus as BugStatus] ?? t.defectStatus.toUpperCase();
 
   return (
-    <select
-      value={t.defectStatus}
-      onChange={(e) => move({ id: t.id, origin: "report" }, "bug", e.target.value)}
+    <button
+      type="button"
+      onClick={handleClick}
       disabled={isPending}
-      className={`press rounded-full border px-3 py-1 text-xs font-semibold uppercase outline-none focus:border-primary disabled:opacity-50 ${colorClass}`}
+      title="Click to cycle defect status"
+      className={`press rounded-full border px-3 py-1 text-xs font-semibold uppercase outline-none transition-all duration-150 select-none cursor-pointer min-w-[104px] text-center focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 hover:brightness-105 ${defectColorClass(t.defectStatus)}`}
     >
-      <option value="untracked">UNTRACKED</option>
-      <option value="open">OPEN</option>
-      <option value="in-progress">IN PROGRESS</option>
-      <option value="fixed">FIXED</option>
-      <option value="verified">VERIFIED</option>
-      <option value="closed">CLOSED</option>
-      <option value="wont-fix">WONT FIX</option>
-    </select>
+      {label}
+    </button>
   );
 }
 
