@@ -4,7 +4,7 @@ import { Search, SearchX } from "lucide-react";
 import { Shell } from "@/components/dashboard/shell";
 import { EmptyState, Panel, Pill, Toolbar } from "@/components/dashboard/bits";
 import { ExportMenu } from "@/components/dashboard/export-menu";
-import { useDashboard } from "@/lib/data";
+import { useDashboard, useMoveCard } from "@/lib/data";
 import type { Column } from "@/lib/export";
 
 type TestRow = {
@@ -12,6 +12,7 @@ type TestRow = {
   name: string;
   workstream: string;
   status: string;
+  defectStatus: string;
   owner: string;
   updated: string;
 };
@@ -21,6 +22,7 @@ const exportColumns: Column<TestRow>[] = [
   { key: "name", header: "Test case", value: (t) => t.name, width: 3600 },
   { key: "workstream", header: "Workstream", value: (t) => t.workstream, width: 1800 },
   { key: "status", header: "Outcome", value: (t) => t.status, width: 1200 },
+  { key: "defectStatus", header: "Defect Status", value: (t) => t.defectStatus, width: 1200 },
   { key: "owner", header: "Owner", value: (t) => t.owner, width: 1500 },
   { key: "updated", header: "Last updated", value: (t) => t.updated, width: 1600 },
 ];
@@ -43,6 +45,35 @@ export const Route = createFileRoute("/test-cases")({
   }),
   component: TestCases,
 });
+
+function DefectStatusToggle({ t }: { t: TestRow }) {
+  const { move, isPending } = useMoveCard();
+  
+  // Custom styling for specific statuses based on the design system variables
+  const colorClass = 
+    ["fixed", "closed", "verified"].includes(t.defectStatus) 
+      ? "text-[var(--ok)] border-[var(--ok)] bg-[var(--ok-bg)]"
+      : t.defectStatus === "in-progress"
+      ? "text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-soft)]"
+      : "text-muted-foreground border-border bg-surface";
+
+  return (
+    <select
+      value={t.defectStatus}
+      onChange={(e) => move({ id: t.id, origin: "report" }, "bug", e.target.value)}
+      disabled={isPending}
+      className={`press rounded-full border px-3 py-1 text-xs font-semibold uppercase outline-none focus:border-primary disabled:opacity-50 ${colorClass}`}
+    >
+      <option value="untracked">UNTRACKED</option>
+      <option value="open">OPEN</option>
+      <option value="in-progress">IN PROGRESS</option>
+      <option value="fixed">FIXED</option>
+      <option value="verified">VERIFIED</option>
+      <option value="closed">CLOSED</option>
+      <option value="wont-fix">WONT FIX</option>
+    </select>
+  );
+}
 
 function TestCases() {
   const { testCases, workstreams } = useDashboard();
@@ -158,6 +189,7 @@ function TestCases() {
               <span className="min-w-[200px] flex-1 text-sm font-medium">{t.name}</span>
               <span className="text-xs text-muted-foreground">{t.workstream}</span>
               <Pill value={t.status} />
+              <DefectStatusToggle t={t} />
               <span className="w-24 text-right text-xs text-muted-foreground">{t.owner}</span>
               <span className="w-14 text-right text-xs text-muted-foreground">{t.updated}</span>
             </li>

@@ -226,6 +226,24 @@ const asBugStatus = (value: string): BugStatus =>
 
 export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainText) {
   const cases = raw.testcases.filter((c) => c.kind === "case");
+  const getBugStatus = (c: z.infer<typeof record>) => {
+    const patch = raw.overrides[c.caseId];
+    const base: BugStatus = c.tracking
+      ? ({ open: "open", prog: "in-progress", fixed: "fixed", ver: "verified" } as const)[
+          c.tracking.status
+        ]
+      : "untracked";
+    return patch ? asBugStatus(patch.status) : base;
+  };
+
+  const getTestCaseStatus = (c: z.infer<typeof record>) => {
+    const bugStatus = getBugStatus(c);
+    if (["fixed", "verified", "closed"].includes(bugStatus)) return "pass";
+    return ({ PASS: "pass", PARTIAL: "partial", "NOT RUN": "not-run", FAIL: "fail" } as const)[
+      c.verdict || "NOT RUN"
+    ];
+  };
+
   const workstreams = [...new Set(cases.map((c) => c.workstream))].map((id) => {
     const members = raw.team.filter((t) => t.slot === `Developer ${id.replace(/^D/, "")}`);
     const rows = cases.filter((c) => c.workstream === id);
@@ -233,10 +251,10 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
       id,
       name: members[0]?.area || id,
       owner: members[0]?.name || "Unassigned",
-      pass: rows.filter((c) => c.verdict === "PASS").length,
-      partial: rows.filter((c) => c.verdict === "PARTIAL").length,
-      notRun: rows.filter((c) => c.verdict === "NOT RUN").length,
-      fail: rows.filter((c) => c.verdict === "FAIL").length,
+      pass: rows.filter((c) => getTestCaseStatus(c) === "pass").length,
+      partial: rows.filter((c) => getTestCaseStatus(c) === "partial").length,
+      notRun: rows.filter((c) => getTestCaseStatus(c) === "not-run").length,
+      fail: rows.filter((c) => getTestCaseStatus(c) === "fail").length,
     };
   });
   const streamName = (id: string) => workstreams.find((w) => w.id === id)?.name || id;
@@ -354,9 +372,8 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
     id: c.caseId,
     name: text(c.edits?.title || c.original.title),
     workstream: streamName(c.workstream),
-    status: ({ PASS: "pass", PARTIAL: "partial", "NOT RUN": "not-run", FAIL: "fail" } as const)[
-      c.verdict || "NOT RUN"
-    ],
+    status: getTestCaseStatus(c),
+    defectStatus: getBugStatus(c),
     owner: c.tracking?.byName || "—",
     updated: date(c.tracking?.at),
   }));
