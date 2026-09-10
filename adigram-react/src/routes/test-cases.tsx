@@ -82,13 +82,22 @@ function defectColorClass(status: string) {
 }
 
 function DefectStatusToggle({ t }: { t: TestRow }) {
-  const { move, isPending } = useMoveCard();
+  const { move } = useMoveCard();
+  const [localPending, setLocalPending] = useState(false);
 
-  function handleClick() {
-    if (isPending) return;
+  async function handleClick(e: React.MouseEvent) {
+    e.stopPropagation(); // prevent row's press animation from bubbling
+    if (localPending) return;
     const idx = DEFECT_CYCLE.indexOf(t.defectStatus as BugStatus);
     const next = DEFECT_CYCLE[(idx + 1) % DEFECT_CYCLE.length]!;
-    move({ id: t.id, origin: "report" }, "bug", next);
+    setLocalPending(true);
+    try {
+      await move({ id: t.id, origin: "report" }, "bug", next);
+    } catch (err) {
+      console.error("Failed to update defect status:", err);
+    } finally {
+      setLocalPending(false);
+    }
   }
 
   const label = DEFECT_LABELS[t.defectStatus as BugStatus] ?? t.defectStatus.toUpperCase();
@@ -97,11 +106,11 @@ function DefectStatusToggle({ t }: { t: TestRow }) {
     <button
       type="button"
       onClick={handleClick}
-      disabled={isPending}
+      disabled={localPending}
       title="Click to cycle defect status"
       className={`press rounded-full border px-3 py-1 text-xs font-semibold uppercase outline-none transition-all duration-150 select-none cursor-pointer min-w-[104px] text-center focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 hover:brightness-105 ${defectColorClass(t.defectStatus)}`}
     >
-      {label}
+      {localPending ? "…" : label}
     </button>
   );
 }
