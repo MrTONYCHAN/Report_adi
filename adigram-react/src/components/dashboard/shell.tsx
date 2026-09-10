@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   RefreshCw,
   AlertTriangle,
+  LockKeyhole,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
@@ -25,6 +26,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { useSignOut } from "@/lib/access";
 import { useDashboard, useDashboardQuery } from "@/lib/data";
 
 const COLLAPSE_KEY = "adigram.sidebar.collapsed";
@@ -50,6 +52,7 @@ export function Shell({
 }) {
   const { activity, bugs, developers, tasks, testCases, totals, sourceUpdatedAt } = useDashboard();
   const { refetch, isFetching, dataUpdatedAt, error } = useDashboardQuery();
+  const signOut = useSignOut();
 
   const nav = [
     { to: "/", label: "Overview", icon: LayoutDashboard, hint: "Readiness" },
@@ -141,10 +144,10 @@ export function Shell({
               onClick={() => setOpen(false)}
               aria-current={active ? "page" : undefined}
               title={railed(mobile) ? item.label : undefined}
-              className={`press flex items-center gap-3 rounded-2xl py-2.5 text-sm font-medium transition-colors ${railed(mobile) ? "justify-center px-2" : "px-3"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-secondary"}`}
+              className={`sidebar-link press flex items-center gap-3 rounded-2xl py-2.5 text-sm font-medium ${railed(mobile) ? "justify-center px-2" : "px-3"} ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"}`}
             >
               <span
-                className={`grid size-8 shrink-0 place-items-center rounded-xl ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+                className={`sidebar-link-icon grid size-8 shrink-0 place-items-center rounded-xl ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
               >
                 <item.icon className="size-4" />
               </span>
@@ -248,7 +251,7 @@ export function Shell({
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="flex w-[min(272px,90vw)] flex-col gap-0 bg-sidebar p-0"
+                  className="sidebar-drawer flex w-[min(272px,90vw)] flex-col gap-0 bg-sidebar p-0"
                 >
                   <SheetTitle className="sr-only">Workspace navigation</SheetTitle>
                   <SheetDescription className="sr-only">
@@ -366,6 +369,22 @@ export function Shell({
               </Tooltip>
 
               <ThemeToggle />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => signOut.mutate()}
+                    disabled={signOut.isPending}
+                    aria-label="Lock the dashboard"
+                    className="press grid size-9 place-items-center rounded-full border border-border bg-surface text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <LockKeyhole className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {signOut.isPending ? "Locking…" : "Lock · the access code will be asked again"}
+                </TooltipContent>
+              </Tooltip>
 
               <Popover>
                 <PopoverTrigger asChild>
