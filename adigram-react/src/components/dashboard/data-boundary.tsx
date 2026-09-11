@@ -1,29 +1,48 @@
 import { useDashboardQuery } from "@/lib/data";
+import {
+  BrandEllipsis,
+  BrandLogo,
+  BrandScreen,
+  BrandWordmark,
+  DotMatrix,
+} from "@/components/dashboard/brand-screen";
 import type { ReactNode } from "react";
 export function DashboardDataBoundary({ children }: { children: ReactNode }) {
   const { data, isPending, error, refetch, isFetching } = useDashboardQuery();
   if (!data)
-    return (
-      <main
-        className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 p-8"
-        aria-busy={isPending}
-      >
-        <h1 className="text-xl font-semibold">ADIGRAMS readiness</h1>
-        {isPending ? (
-          <p role="status">Loading the readiness report…</p>
-        ) : (
-          <>
-            <p role="alert">{error?.message || "No report data is available."}</p>
-            <button
-              onClick={() => void refetch()}
-              disabled={isFetching}
-              className="rounded-xl bg-primary px-4 py-3 text-primary-foreground"
-            >
-              {isFetching ? "Retrying…" : "Retry loading data"}
-            </button>
-          </>
-        )}
-      </main>
+    return isPending ? (
+      <BrandScreen busy>
+        <div className="brand-card flex flex-col items-center gap-6 text-center">
+          <BrandLogo />
+          <div>
+            <BrandWordmark className="text-xl sm:text-2xl" />
+            <p className="mt-2 text-sm text-muted-foreground" role="status">
+              Loading the readiness report
+              <BrandEllipsis />
+            </p>
+          </div>
+          <DotMatrix />
+        </div>
+      </BrandScreen>
+    ) : (
+      <BrandScreen>
+        <div className="brand-card flex flex-col items-center gap-5 text-center">
+          <BrandLogo />
+          <div>
+            <BrandWordmark className="text-xl sm:text-2xl" />
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {error?.message || "No report data is available."}
+            </p>
+          </div>
+          <button
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="press w-full rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {isFetching ? "Retrying…" : "Retry loading data"}
+          </button>
+        </div>
+      </BrandScreen>
     );
   return (
     <>

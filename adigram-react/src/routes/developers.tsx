@@ -2,8 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Check,
-  CheckCircle2,
-  ClipboardList,
   Loader2,
   Pencil,
   Plus,
@@ -14,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Shell } from "@/components/dashboard/shell";
-import { EmptyState, Panel, StatCard } from "@/components/dashboard/bits";
+import { EmptyState, Panel } from "@/components/dashboard/bits";
 import { ExportMenu } from "@/components/dashboard/export-menu";
 import {
   useCreateTeamMember,
@@ -70,8 +68,6 @@ function Developers() {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState(blank);
   const [error, setError] = useState<string | null>(null);
-  const openAssignments = developers.reduce((sum, d) => sum + d.openTasks + d.openBugs, 0);
-  const resolved = developers.reduce((sum, d) => sum + d.resolved, 0);
   const pending = create.isPending || save.isPending || reset.isPending || remove.isPending;
 
   function startEdit(row: (typeof developers)[number]) {
@@ -141,32 +137,7 @@ function Developers() {
         />
       }
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard
-          label="Active developers"
-          value={developers.length}
-          icon={Users}
-          hint="Current roster"
-        />
-        <StatCard
-          label="Open assignments"
-          value={openAssignments}
-          icon={ClipboardList}
-          tone="warning"
-          hint="Tasks and defects"
-          delay={50}
-        />
-        <StatCard
-          label="Resolved updates"
-          value={resolved}
-          icon={CheckCircle2}
-          tone="success"
-          hint="Recorded remediation"
-          delay={100}
-        />
-      </div>
-
-      <div className="mt-4">
+      <div>
         <Panel
           title="Team roster"
           subtitle="Manage names, roles and workstream ownership"

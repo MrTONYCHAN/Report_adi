@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="square">
+    <path d="M0 26 L20 6 L40 26 L60 6 L80 26 L100 6 L120 26 L140 6 L160 26" />
+    <path d="M0 35 L20 15 L40 35 L60 15 L80 35 L100 15 L120 35 L140 15 L160 35" />
+    <path d="M40 56 L64 80 L40 104 L16 80 Z" />
+    <path d="M120 56 L144 80 L120 104 L96 80 Z" />
+    <path d="M40 69 L51 80 L40 91 L29 80 Z" />
+    <path d="M120 69 L131 80 L120 91 L109 80 Z" />
+    <path d="M80 67 L93 80 L80 93 L67 80 Z" />
+    <path d="M0 67 L13 80 L0 93 L-13 80 Z" />
+    <path d="M160 67 L173 80 L160 93 L147 80 Z" />
+    <path d="M13 80 H16 M64 80 H67 M93 80 H96 M144 80 H147" />
+    <path d="M0 125 L20 145 L40 125 L60 145 L80 125 L100 145 L120 125 L140 145 L160 125" />
+    <path d="M0 134 L20 154 L40 134 L60 154 L80 134 L100 154 L120 134 L140 154 L160 134" />
+  </g>
+  <g fill="#ffffff">
+    <circle cx="20" cy="52" r="1.8" /><circle cx="60" cy="52" r="1.8" />
+    <circle cx="100" cy="52" r="1.8" /><circle cx="140" cy="52" r="1.8" />
+    <circle cx="20" cy="108" r="1.8" /><circle cx="60" cy="108" r="1.8" />
+    <circle cx="100" cy="108" r="1.8" /><circle cx="140" cy="108" r="1.8" />
+  </g>
+</svg>
