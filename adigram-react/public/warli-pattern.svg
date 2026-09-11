@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="260" viewBox="0 0 300 260">
+  <!-- The Warli vocabulary from the report's lock screen: a figure is two
+       triangles meeting at the waist under a circle, a tree is a trunk with
+       paired branches, and the bands are the chevron and dot rows that border a
+       painting. Drawn as geometry, so it carries no licence and no likeness.
+       Every stroke is white because the page uses this file as a mask and inks
+       it from CSS; the chevron and dot spacing are set to the tile width so the
+       motif repeats without a seam. -->
+  <defs>
+    <g id="w-figure" stroke="#ffffff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="-17" r="4.2" />
+      <path d="M0 0 L-6.5 -12 L6.5 -12 Z" />
+      <path d="M0 0 L-6.5 12 L6.5 12 Z" />
+      <path d="M-6 -9 L-14 -15 M6 -9 L14 -15" />
+      <path d="M-4 12 L-8 23 M4 12 L8 23" />
+    </g>
+    <g id="w-tree" stroke="#ffffff" stroke-width="1.6" fill="none" stroke-linecap="round">
+      <path d="M0 26 L0 -20" />
+      <path d="M0 -6 L-11 -16 M0 -6 L11 -16 M0 -14 L-8 -23 M0 -14 L8 -23 M0 2 L-12 -6 M0 2 L12 -6" />
+    </g>
+    <g id="w-pot" stroke="#ffffff" stroke-width="1.6" fill="none" stroke-linecap="round">
+      <path d="M-9 -8 Q-13 2 -7 10 L7 10 Q13 2 9 -8 Z" />
+      <path d="M-11 -8 L11 -8" />
+    </g>
+  </defs>
+
+  <use href="#w-figure" x="60" y="70" />
+  <use href="#w-figure" x="110" y="70" />
+  <use href="#w-tree" x="200" y="62" />
+  <use href="#w-figure" x="252" y="72" />
+  <use href="#w-pot" x="30" y="176" />
+  <use href="#w-figure" x="150" y="182" />
+  <use href="#w-tree" x="250" y="174" />
+
+  <path
+    d="M0 124 l15 -11 l15 11 l15 -11 l15 11 l15 -11 l15 11 l15 -11 l15 11 l15 -11 l15 11
+       l15 -11 l15 11 l15 -11 l15 11 l15 -11 l15 11 l15 -11 l15 11 l15 -11 l15 11"
+    stroke="#ffffff"
+    stroke-width="1.4"
+    fill="none"
+    stroke-linejoin="round"
+  />
+
+  <g fill="#ffffff">
+    <circle cx="18.75" cy="240" r="1.8" />
+    <circle cx="56.25" cy="240" r="1.8" />
+    <circle cx="93.75" cy="240" r="1.8" />
+    <circle cx="131.25" cy="240" r="1.8" />
+    <circle cx="168.75" cy="240" r="1.8" />
+    <circle cx="206.25" cy="240" r="1.8" />
+    <circle cx="243.75" cy="240" r="1.8" />
+    <circle cx="281.25" cy="240" r="1.8" />
+  </g>
+</svg>

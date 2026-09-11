@@ -419,35 +419,36 @@ select {
   min-height: 100svh;
   padding: 1.5rem 1rem;
   overflow: hidden;
-  color: oklch(0.97 0.008 250);
-  background-color: oklch(0.145 0.028 264);
+  color: oklch(0.95 0.014 80);
+  background-color: #241a15;
 }
 
-/* The motif is a real tiled image, used as a mask so one file inks itself in
-   whatever flat colour this rule names, rather than needing a second copy. */
+/* The Warli line art the report's lock screen is painted with, tiled here as a
+   real image and used as a mask so one file inks itself in the cream below
+   rather than needing a copy per ground. */
 .brand-screen::before {
   content: "";
   position: absolute;
-  inset: -170px;
+  inset: -300px;
   z-index: -1;
-  background-color: rgb(255 255 255 / 0.075);
-  -webkit-mask-image: url("/tribal-pattern.svg");
-  mask-image: url("/tribal-pattern.svg");
-  -webkit-mask-size: 160px 160px;
-  mask-size: 160px 160px;
+  background-color: rgb(232 220 200 / 0.17);
+  -webkit-mask-image: url("/warli-pattern.svg");
+  mask-image: url("/warli-pattern.svg");
+  -webkit-mask-size: 300px 260px;
+  mask-size: 300px 260px;
   -webkit-mask-repeat: repeat;
   mask-repeat: repeat;
-  animation: tribal-drift 54s linear infinite;
+  animation: warli-drift 90s linear infinite;
 }
 
-@keyframes tribal-drift {
+@keyframes warli-drift {
   from {
     -webkit-mask-position: 0 0;
     mask-position: 0 0;
   }
   to {
-    -webkit-mask-position: 160px 160px;
-    mask-position: 160px 160px;
+    -webkit-mask-position: 300px 260px;
+    mask-position: 300px 260px;
   }
 }
 
@@ -458,26 +459,26 @@ select {
   max-width: 27rem;
   padding: clamp(1.5rem, 5vw, 2.25rem);
   border-radius: 24px;
-  border: 1px solid rgb(255 255 255 / 0.13);
-  background-color: oklch(0.185 0.026 264 / 0.92);
+  border: 1px solid rgb(232 220 200 / 0.16);
+  background-color: oklch(0.235 0.022 52 / 0.97);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 30px 70px -44px rgb(0 0 0 / 0.9);
   animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --background: oklch(0.2 0.025 264);
-  --foreground: oklch(0.97 0.008 250);
-  --card: oklch(0.2 0.025 264);
-  --card-foreground: oklch(0.97 0.008 250);
-  --muted: oklch(0.98 0 0 / 0.08);
-  --muted-foreground: oklch(0.81 0.018 256);
-  --secondary: oklch(0.98 0 0 / 0.08);
-  --secondary-foreground: oklch(0.97 0.008 250);
-  --border: oklch(0.98 0 0 / 0.16);
-  --input: oklch(0.98 0 0 / 0.16);
-  --ring: oklch(0.78 0.15 264);
-  --primary: oklch(0.68 0.17 262);
-  --primary-foreground: oklch(0.15 0.03 262);
-  --destructive: oklch(0.78 0.16 25);
+  --background: oklch(0.24 0.022 52);
+  --foreground: oklch(0.95 0.014 80);
+  --card: oklch(0.24 0.022 52);
+  --card-foreground: oklch(0.95 0.014 80);
+  --muted: oklch(0.95 0.014 80 / 0.09);
+  --muted-foreground: oklch(0.79 0.022 74);
+  --secondary: oklch(0.95 0.014 80 / 0.09);
+  --secondary-foreground: oklch(0.95 0.014 80);
+  --border: oklch(0.95 0.014 80 / 0.18);
+  --input: oklch(0.95 0.014 80 / 0.18);
+  --ring: oklch(0.72 0.15 45);
+  --primary: oklch(0.62 0.17 42);
+  --primary-foreground: oklch(0.98 0.01 80);
+  --destructive: oklch(0.72 0.17 28);
 }
 
 .brand-logo {
@@ -486,8 +487,8 @@ select {
   width: 3.25rem;
   height: 3.25rem;
   border-radius: 16px;
-  color: oklch(0.16 0.03 262);
-  background-color: oklch(0.72 0.16 264);
+  color: oklch(0.98 0.01 80);
+  background-color: oklch(0.58 0.18 40);
 }
 
 .brand-wordmark {
@@ -496,7 +497,7 @@ select {
   letter-spacing: 0.4em;
   /* The tracking adds a trailing gap; the indent puts the word back on centre. */
   padding-left: 0.4em;
-  color: oklch(0.98 0.008 250);
+  color: oklch(0.96 0.014 80);
 }
 
 /* Loader: a three-by-three matrix where the lit cell travels along each
@@ -511,7 +512,7 @@ select {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 999px;
-  background-color: oklch(0.82 0.15 266);
+  background-color: oklch(0.78 0.13 48);
   opacity: 0.22;
   transform: scale(0.72);
   animation: dot-matrix-sweep 1.5s ease-in-out infinite;
@@ -565,9 +566,9 @@ select {
 
 /* Eight boxes, one per digit, so a filled tile reads as progress through the code. */
 .otp-slot {
-  border-color: rgb(255 255 255 / 0.16);
-  background-color: rgb(255 255 255 / 0.05);
-  color: oklch(0.98 0.01 250);
+  border-color: rgb(232 220 200 / 0.18);
+  background-color: rgb(232 220 200 / 0.05);
+  color: oklch(0.96 0.014 80);
   font-variant-numeric: tabular-nums;
   transition:
     background-color 0.2s ease,
