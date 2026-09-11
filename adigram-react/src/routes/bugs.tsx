@@ -8,6 +8,7 @@ import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ItemDialog } from "@/components/dashboard/item-dialog";
 import { Flags, StatusMenu } from "@/components/dashboard/card-controls";
 import {
+  ALL_PROJECTS,
   BUG_STATUSES,
   SEVERITIES,
   STATUS_LABELS,
@@ -71,7 +72,26 @@ const exportColumns: Column<BugRow>[] = [
 ];
 
 function Bugs() {
-  const { bugs, workstreams, developers, transitions, slaDays } = useDashboard();
+  const { bugs, workstreams, developers, transitions, slaDays, projects, activeProjectId } =
+    useDashboard();
+  /* A defect raised before the register held projects carries no project of its
+     own, so it reads as belonging to the first one — where the report lives. */
+  const projectName = (id: string) =>
+    projects.find((project) => project.id === id)?.name || projects[0]?.name || "Unassigned";
+  const filingProject =
+    activeProjectId === ALL_PROJECTS ? (projects[0]?.id ?? "") : activeProjectId;
+  /* The export carries the owning project too, so a pack pulled with every
+     project in view still says which one each defect belongs to. */
+  const columns: Column<BugRow>[] = [
+    ...exportColumns.slice(0, 2),
+    {
+      key: "project",
+      header: "Project",
+      value: (b: BugRow) => projectName(b.projectId),
+      width: 1500,
+    },
+    ...exportColumns.slice(2),
+  ];
   const [sev, setSev] = useState<"all" | Severity>("all");
   const [status, setStatus] = useState<"all" | string>("all");
   const [byAge, setByAge] = useState(false);
@@ -113,7 +133,7 @@ function Bugs() {
             base: "defects",
             title: "Defect register",
             subtitle: `${rows.length} defect(s) · exported from the ADIGRAMS 2.0 readiness dashboard`,
-            columns: exportColumns,
+            columns,
             rows,
             extraSections: [
               {
@@ -198,6 +218,8 @@ function Bugs() {
 
           <ItemDialog
             kind="bug"
+            projects={projects}
+            defaultProjectId={filingProject}
             workstreams={workstreams.map((w) => w.name)}
             assignees={developers.map((d) => d.name)}
             statuses={BUG_STATUSES}
@@ -236,9 +258,9 @@ function Bugs() {
           aria-label="Defect register"
           tabIndex={0}
         >
-          <table className="w-full min-w-[920px] border-separate border-spacing-y-2 text-sm">
+          <table className="w-full min-w-[1040px] border-separate border-spacing-y-2 text-sm">
             <caption className="sr-only">
-              Defects by module, owner, severity, status, schedule and age
+              Defects by project, module, owner, severity, status, schedule and age
             </caption>
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
@@ -247,6 +269,9 @@ function Bugs() {
                 </th>
                 <th scope="col" className="px-3 pb-2 pt-1 font-semibold">
                   Defect
+                </th>
+                <th scope="col" className="px-3 pb-2 pt-1 font-semibold">
+                  Project
                 </th>
                 <th scope="col" className="px-3 pb-2 pt-1 font-semibold">
                   Module
@@ -274,7 +299,7 @@ function Bugs() {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="pt-4">
+                  <td colSpan={10} className="pt-4">
                     <EmptyState
                       icon={SearchX}
                       title="No defects match these filters"
@@ -298,6 +323,9 @@ function Bugs() {
                     <span className="mt-1 block">
                       <Flags row={b} />
                     </span>
+                  </td>
+                  <td className="px-3 text-xs font-medium text-muted-foreground">
+                    {projectName(b.projectId)}
                   </td>
                   <td className="px-3 text-muted-foreground">{b.module}</td>
                   <td className="px-3 text-muted-foreground">{b.assignee}</td>

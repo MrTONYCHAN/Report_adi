@@ -7,7 +7,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { createBundle, importBundle, exportDatabase } from "./migration.mjs";
 import { createMongoRepository } from "./mongo.mjs";
 import { dashboardApi } from "./api.mjs";
-import { reportSchema } from "../src/lib/data.ts";
+import { reportSchema } from "../src/lib/report.ts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

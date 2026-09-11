@@ -62,18 +62,12 @@ export function StatCard({
     warning: "bg-warning/15 text-warning ring-warning/15",
     danger: "bg-destructive/10 text-destructive ring-destructive/15",
   }[tone];
-  const accentClass = {
-    primary: "before:bg-primary",
-    success: "before:bg-success",
-    warning: "before:bg-warning",
-    danger: "before:bg-destructive",
-  }[tone];
   const up = (delta ?? 0) >= 0;
 
   return (
     <div
       style={{ animationDelay: `${delay}ms` }}
-      className={`rise card-ios relative overflow-hidden p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 sm:p-5 ${accentClass}`}
+      className="rise card-ios relative overflow-hidden p-4 sm:p-5"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">

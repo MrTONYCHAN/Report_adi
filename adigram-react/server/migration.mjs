@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { MongoClient } from "mongodb";
-import { reportSchema } from "../src/lib/data.ts";
+import { reportSchema } from "../src/lib/report.ts";
 import { RULES } from "./workflow.mjs";
 import { COLLECTIONS, documentsFor, ensureCollections, readDocuments, dataFrom } from "./mongo.mjs";
 

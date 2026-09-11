@@ -1,9 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
-/** The register can hold several projects; everything shipped so far sits under
- *  ADIGRAM. Picking this value in the switcher drops the scope entirely and
- *  shows every project at once. */
-export const ALL_PROJECTS = "all";
+/* The constant now sits with the scoping logic that uses it, and is
+   re-exported here so callers can take the provider and the value together. */
+export { ALL_PROJECTS } from "@/lib/report";
 
 const KEY = "adigram.project";
 

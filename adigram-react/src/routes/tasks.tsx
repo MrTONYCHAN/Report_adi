@@ -8,6 +8,7 @@ import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ItemDialog } from "@/components/dashboard/item-dialog";
 import { Flags, StatusMenu } from "@/components/dashboard/card-controls";
 import {
+  ALL_PROJECTS,
   STATUS_LABELS,
   TASK_STATUSES,
   formatDate,
@@ -87,7 +88,10 @@ const exportColumns: Column<Task>[] = [
 ];
 
 function Tasks() {
-  const { tasks, workstreams, developers, transitions, slaDays } = useDashboard();
+  const { tasks, workstreams, developers, transitions, slaDays, projects, activeProjectId } =
+    useDashboard();
+  const filingProject =
+    activeProjectId === ALL_PROJECTS ? (projects[0]?.id ?? "") : activeProjectId;
   const [filter, setFilter] = useState<"all" | TaskStatus>("all");
   const [dates, setDates] = useState<DateFilter>(NO_DATE_FILTER);
   const [direction, setDirection] = useState<"asc" | "desc">("asc");
@@ -173,6 +177,8 @@ function Tasks() {
           />
           <ItemDialog
             kind="task"
+            projects={projects}
+            defaultProjectId={filingProject}
             workstreams={workstreams.map((w) => w.name)}
             assignees={developers.map((d) => d.name)}
             statuses={TASK_STATUSES}

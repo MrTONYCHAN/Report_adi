@@ -145,6 +145,9 @@ function draft(input, store) {
     title: text(input.title, 240, "Untitled"),
     description: text(input.description, 4000),
     workstream: text(input.workstream, 120, "Unassigned workstream"),
+    /* Which project the item belongs to. Blank is legitimate: everything
+       raised before the register held projects falls to the first one. */
+    projectId: text(input.projectId, 40),
     assignee: text(input.assignee, 120, "Unassigned"),
     severity: SEVERITIES.includes(input.severity) ? input.severity : "unassessed",
     status,
@@ -189,6 +192,7 @@ function patch(item, input, now) {
     ["title", 240],
     ["description", 4000],
     ["workstream", 120],
+    ["projectId", 40],
     ["assignee", 120],
   ]) {
     if (typeof input[field] === "string" && text(input[field], max) !== item[field]) {

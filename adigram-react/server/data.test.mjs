@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readReport } from "./report-source.mjs";
 import { dashboardApi } from "./api.mjs";
-import { deriveDashboard, reportSchema } from "../src/lib/data.ts";
+import { deriveDashboard, reportSchema } from "../src/lib/report.ts";
 
 function report(verdict = "FAIL") {
   return `<tr data-s="${verdict}"><td class="id">D1-01</td><td>Source title</td><td>Source finding</td><td class="st">status</td></tr>

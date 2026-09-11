@@ -27,6 +27,7 @@ export type ItemFormValues = {
   title: string;
   description: string;
   workstream: string;
+  projectId: string;
   assignee: string;
   severity: Severity;
   status: string;
@@ -35,10 +36,11 @@ export type ItemFormValues = {
   progress: string;
 };
 
-const blank = (): ItemFormValues => ({
+const blank = (projectId: string): ItemFormValues => ({
   title: "",
   description: "",
   workstream: "",
+  projectId,
   assignee: "",
   severity: "medium",
   status: "",
@@ -58,6 +60,8 @@ export function ItemDialog({
   assignees,
   statuses,
   slaDays,
+  projects,
+  defaultProjectId = "",
   onDone,
 }: {
   kind: ItemKind;
@@ -67,10 +71,14 @@ export function ItemDialog({
   assignees: string[];
   statuses: string[];
   slaDays: Record<string, number>;
+  /** Every project the register holds; the item is filed under one of them. */
+  projects: { id: string; name: string }[];
+  /** Whichever project the board is scoped to, so a new item lands there. */
+  defaultProjectId?: string;
   onDone?: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [values, setValues] = useState<ItemFormValues>(initial ?? blank());
+  const [values, setValues] = useState<ItemFormValues>(initial ?? blank(defaultProjectId));
   const [error, setError] = useState<string | null>(null);
   const create = useCreateItem();
   const update = useUpdateItem();
@@ -79,10 +87,10 @@ export function ItemDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initial ?? blank());
+      setValues(initial ?? blank(defaultProjectId));
       setError(null);
     }
-  }, [open, initial]);
+  }, [open, initial, defaultProjectId]);
 
   const set = <K extends keyof ItemFormValues>(key: K, value: ItemFormValues[K]) =>
     setValues((current) => ({ ...current, [key]: value }));
@@ -105,6 +113,7 @@ export function ItemDialog({
       title: values.title.trim(),
       description: values.description.trim(),
       workstream: values.workstream.trim(),
+      projectId: values.projectId,
       assignee: values.assignee.trim(),
       severity: values.severity,
       startDate: values.startDate || null,
@@ -164,7 +173,23 @@ export function ItemDialog({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="item-project">Project</Label>
+              <select
+                id="item-project"
+                className={field}
+                value={values.projectId}
+                onChange={(e) => set("projectId", e.target.value)}
+              >
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+                {!projects.length && <option value="">No projects yet</option>}
+              </select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="item-workstream">{kind === "bug" ? "Module" : "Workstream"}</Label>
               <input
@@ -270,29 +295,33 @@ export function ItemDialog({
             </div>
           )}
 
-          <div className="rounded-2xl border border-border bg-surface-2 p-3 text-xs leading-relaxed text-muted-foreground">
-            <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground">
-              <Sparkles className="size-3.5 text-primary" />
-              What the workflow will do
-            </p>
-            {future ? (
-              <p className="flex items-start gap-1.5">
-                <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
-                Planned for {values.startDate}. It opens in <strong>Scheduled</strong> and moves to{" "}
-                <strong>{kind === "bug" ? "Open" : "To do"}</strong> on its own that morning.
+          {/* Defects are raised by people who already know how the register
+              behaves, so the dialog states the automation only for tasks. */}
+          {kind === "task" && (
+            <div className="rounded-2xl border border-border bg-surface-2 p-3 text-xs leading-relaxed text-muted-foreground">
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground">
+                <Sparkles className="size-3.5 text-primary" />
+                What the workflow will do
               </p>
-            ) : (
-              <p>
-                Starts on the board today in <strong>{kind === "bug" ? "Open" : "To do"}</strong>.
-              </p>
-            )}
-            {!values.dueDate && sla !== undefined && (
-              <p className="mt-1">
-                No due date set, so the {values.severity} response target of {sla} days will be
-                applied automatically.
-              </p>
-            )}
-          </div>
+              {future ? (
+                <p className="flex items-start gap-1.5">
+                  <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
+                  Planned for {values.startDate}. It opens in <strong>Scheduled</strong> and moves
+                  to <strong>To do</strong> on its own that morning.
+                </p>
+              ) : (
+                <p>
+                  Starts on the board today in <strong>To do</strong>.
+                </p>
+              )}
+              {!values.dueDate && sla !== undefined && (
+                <p className="mt-1">
+                  No due date set, so the {values.severity} response target of {sla} days will be
+                  applied automatically.
+                </p>
+              )}
+            </div>
+          )}
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
