@@ -57,24 +57,33 @@ export function StatCard({
   delay?: number;
 }) {
   const toneClass = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/12 text-success",
-    warning: "bg-warning/15 text-warning",
-    danger: "bg-destructive/10 text-destructive",
+    primary: "bg-primary/10 text-primary ring-primary/15",
+    success: "bg-success/12 text-success ring-success/15",
+    warning: "bg-warning/15 text-warning ring-warning/15",
+    danger: "bg-destructive/10 text-destructive ring-destructive/15",
+  }[tone];
+  const accentClass = {
+    primary: "before:bg-primary",
+    success: "before:bg-success",
+    warning: "before:bg-warning",
+    danger: "before:bg-destructive",
   }[tone];
   const up = (delta ?? 0) >= 0;
 
   return (
-    <div style={{ animationDelay: `${delay}ms` }} className="rise card-ios sheen p-4 sm:p-5">
+    <div
+      style={{ animationDelay: `${delay}ms` }}
+      className={`rise card-ios relative overflow-hidden p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 sm:p-5 ${accentClass}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {label}
         </p>
-        <span className={`grid size-8 shrink-0 place-items-center rounded-xl ${toneClass}`}>
+        <span className={`grid size-9 shrink-0 place-items-center rounded-md ring-1 ${toneClass}`}>
           <Icon className="size-4" />
         </span>
       </div>
-      <p className="mt-3 text-[28px] font-bold leading-none tracking-tight sm:text-3xl">
+      <p className="mt-3 text-[30px] font-bold leading-none sm:text-[32px]">
         <Counter value={value} suffix={suffix} />
       </p>
       {delta !== undefined && (
@@ -118,7 +127,7 @@ export function Panel({
     >
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-bold tracking-tight">{title}</h2>
+          <h2 className="truncate text-sm font-bold">{title}</h2>
           {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -221,7 +230,7 @@ export function Bar({ value, tone = "primary" }: { value: number | null; tone?: 
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value}
-      className="h-1.5 w-full overflow-hidden rounded-full bg-secondary"
+      className="h-2 w-full overflow-hidden rounded-full bg-secondary"
     >
       <div
         className={`h-full rounded-full ${bg} transition-[width] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]`}
@@ -233,7 +242,7 @@ export function Bar({ value, tone = "primary" }: { value: number | null; tone?: 
 
 export function ProgressRing({ value, size = 132 }: { value: number; size?: number }) {
   const v = useCountUp(value, 1100);
-  const stroke = 12;
+  const stroke = 10;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
@@ -253,7 +262,9 @@ export function ProgressRing({ value, size = 132 }: { value: number; size?: numb
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="var(--chart-1)"
+          stroke={
+            value >= 75 ? "var(--chart-2)" : value >= 55 ? "var(--chart-1)" : "var(--chart-3)"
+          }
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}

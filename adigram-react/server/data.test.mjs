@@ -126,3 +126,120 @@ test("API has no fixture fallback and does not disclose connection details on fa
 test("malformed API records are rejected instead of displaying made-up totals", () => {
   assert.equal(reportSchema.safeParse({ team: [], testcases: [{}] }).success, false);
 });
+
+test("test-case workspace saves all groups and rows in one request", async () => {
+  const data = {
+    report: {
+      source: "Test report",
+      sourceUpdatedAt: "2026-09-11T00:00:00Z",
+      team: [],
+      testcases: [],
+    },
+    store: {
+      items: [],
+      overrides: {},
+      automation: [],
+      team: {},
+      rules: {},
+      testCaseWorkspace: null,
+    },
+  };
+  const api = dashboardApi({ repository: { run: async (action) => action(data) } });
+  const response = () => ({
+    statusCode: 200,
+    setHeader() {},
+    end(value) {
+      this.body = JSON.parse(value);
+    },
+  });
+  const res = response();
+  await api(
+    {
+      url: "/api/test-cases",
+      method: "PUT",
+      body: {
+        groups: [
+          {
+            id: "D1",
+            name: "Auth, RBAC and scope",
+            date: "2026-09-11",
+            rows: [
+              {
+                id: "D1-01",
+                name: "Authentication works",
+                status: "pass",
+                defectStatus: "verified",
+                owner: "Tester",
+                updated: "2026-09-11",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    res,
+    () => assert.fail("unexpected fallthrough"),
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(data.store.testCaseWorkspace.groups[0].rows[0].id, "D1-01");
+  assert.ok(data.store.testCaseWorkspace.updatedAt);
+});
+
+test("developers can be added, edited and removed without rewriting the report roster", async () => {
+  const data = {
+    report: {
+      source: "Test report",
+      sourceUpdatedAt: "2026-09-11T00:00:00Z",
+      team: [
+        {
+          memberKey: "report-dev",
+          name: "Report developer",
+          slot: "Developer",
+          area: "D1",
+          active: true,
+        },
+      ],
+      testcases: [],
+    },
+    store: {
+      items: [],
+      overrides: {},
+      automation: [],
+      team: {},
+      teamAdded: {},
+      teamRemoved: {},
+      rules: {},
+      testCaseWorkspace: null,
+    },
+  };
+  const api = dashboardApi({ repository: { run: async (action) => action(data) } });
+  const request = async (url, method, body) => {
+    const res = {
+      statusCode: 200,
+      setHeader() {},
+      end(value) {
+        this.body = JSON.parse(value);
+      },
+    };
+    await api({ url, method, body }, res, () => assert.fail("unexpected fallthrough"));
+    return res;
+  };
+
+  const added = await request("/api/team", "POST", {
+    name: "New developer",
+    role: "Engineer",
+    workstream: "D2",
+  });
+  assert.equal(added.statusCode, 201);
+  assert.equal(Object.keys(data.store.teamAdded).length, 1);
+  assert.equal(
+    (await request(`/api/team/${added.body.id}`, "PATCH", { role: "Lead engineer" })).statusCode,
+    200,
+  );
+  assert.equal(data.store.teamAdded[added.body.id].role, "Lead engineer");
+  assert.equal((await request(`/api/team/${added.body.id}`, "DELETE")).statusCode, 200);
+  assert.equal(Object.keys(data.store.teamAdded).length, 0);
+  assert.equal((await request("/api/team/report-dev", "DELETE")).statusCode, 200);
+  assert.equal(data.store.teamRemoved["report-dev"], true);
+  assert.equal(data.report.team[0].name, "Report developer");
+});

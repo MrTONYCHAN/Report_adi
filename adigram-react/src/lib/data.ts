@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ALL_PROJECTS, useProject } from "@/lib/project";
 
 const stamp = z.object({
   byMemberKey: z.string().optional(),
@@ -65,6 +67,53 @@ const teamOverride = z.object({
   at: z.string().optional(),
 });
 
+const addedTeamMember = z.object({
+  name: z.string(),
+  role: z.string(),
+  workstream: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const testCaseRow = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(["pass", "partial", "not-run", "fail"]),
+  defectStatus: z.enum([
+    "scheduled",
+    "untracked",
+    "open",
+    "in-progress",
+    "blocked",
+    "fixed",
+    "verified",
+    "closed",
+    "wont-fix",
+  ]),
+  owner: z.string().default(""),
+  updated: z.string().nullable().default(null),
+});
+
+const testCaseGroup = z.object({
+  id: z.string(),
+  name: z.string(),
+  date: z.string().nullable().default(null),
+  rows: z.array(testCaseRow),
+});
+
+const testCaseProject = z.object({
+  id: z.string(),
+  name: z.string(),
+  date: z.string().nullable().default(null),
+  groups: z.array(testCaseGroup),
+});
+
+const testCaseWorkspace = z.object({
+  projects: z.array(testCaseProject).optional(),
+  groups: z.array(testCaseGroup).optional(),
+  updatedAt: z.string().optional(),
+});
+
 const automationEntry = z.object({
   at: z.string(),
   by: z.string().optional(),
@@ -94,6 +143,9 @@ export const reportSchema = z.object({
   overrides: z.record(z.string(), override).default({}),
   automation: z.array(automationEntry).default([]),
   teamEdits: z.record(z.string(), teamOverride).default({}),
+  teamAdded: z.record(z.string(), addedTeamMember).default({}),
+  teamRemoved: z.record(z.string(), z.boolean()).default({}),
+  testCaseWorkspace: testCaseWorkspace.nullable().default(null),
   transitions: z.record(z.string(), z.record(z.string(), z.array(z.string()))).default({}),
   slaDays: z.record(z.string(), z.number()).default({}),
 });
@@ -112,6 +164,7 @@ export type BugStatus =
   | "wont-fix";
 export type TestStatus = "pass" | "partial" | "not-run" | "fail";
 export type ItemKind = "task" | "bug";
+export type TestCaseWorkspace = z.infer<typeof testCaseWorkspace>;
 
 export const TASK_STATUSES: TaskStatus[] = [
   "scheduled",
@@ -244,7 +297,7 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
     ];
   };
 
-  const workstreams = [...new Set(cases.map((c) => c.workstream))].map((id) => {
+  const reportWorkstreams = [...new Set(cases.map((c) => c.workstream))].map((id) => {
     const members = raw.team.filter((t) => t.slot === `Developer ${id.replace(/^D/, "")}`);
     const rows = cases.filter((c) => c.workstream === id);
     return {
@@ -255,8 +308,42 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
       partial: rows.filter((c) => getTestCaseStatus(c) === "partial").length,
       notRun: rows.filter((c) => getTestCaseStatus(c) === "not-run").length,
       fail: rows.filter((c) => getTestCaseStatus(c) === "fail").length,
+      date: null as string | null,
     };
   });
+  const reportGroups = reportWorkstreams.map((workstream) => ({
+    id: workstream.id,
+    name: workstream.name,
+    date: workstream.date,
+    rows: cases
+      .filter((row) => row.workstream === workstream.id)
+      .map((row) => ({
+        id: row.caseId,
+        name: text(row.edits?.title || row.original.title),
+        status: getTestCaseStatus(row),
+        defectStatus: getBugStatus(row),
+        owner: row.tracking?.byName || "",
+        updated: toDay(row.tracking?.at),
+      })),
+  }));
+  const testCaseProjects = raw.testCaseWorkspace?.projects?.length
+    ? raw.testCaseWorkspace.projects
+    : raw.testCaseWorkspace?.groups
+      ? [{ id: "PROJECT-1", name: "ADIGRAM", date: null, groups: raw.testCaseWorkspace.groups }]
+      : [{ id: "PROJECT-1", name: "ADIGRAM", date: null, groups: reportGroups }];
+  const workstreams = testCaseProjects.flatMap((project) =>
+    project.groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      owner: "",
+      pass: group.rows.filter((row) => row.status === "pass").length,
+      partial: group.rows.filter((row) => row.status === "partial").length,
+      notRun: group.rows.filter((row) => row.status === "not-run").length,
+      fail: group.rows.filter((row) => row.status === "fail").length,
+      date: group.date,
+      projectId: project.id,
+    })),
+  );
   const streamName = (id: string) => workstreams.find((w) => w.id === id)?.name || id;
   const overrides = raw.overrides;
 
@@ -368,53 +455,70 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
 
   const bugs = [...overlayBugs, ...reportBugs];
 
-  const testCases = cases.map((c) => ({
-    id: c.caseId,
-    name: text(c.edits?.title || c.original.title),
-    workstream: streamName(c.workstream),
-    status: getTestCaseStatus(c),
-    defectStatus: getBugStatus(c),
-    owner: c.tracking?.byName || "—",
-    updated: date(c.tracking?.at),
-  }));
+  const testCases = testCaseProjects.flatMap((project) =>
+    project.groups.flatMap((group) =>
+      group.rows.map((row) => ({
+        ...row,
+        updated: row.updated || "",
+        workstream: group.name,
+        workstreamId: group.id,
+        projectId: project.id,
+      })),
+    ),
+  );
   const events = raw.testcases
     .flatMap((c) => c.history.map((h, i) => ({ ...h, caseId: c.caseId, id: `${c.caseId}-${i}` })))
     .filter((h) => h.at && Number.isFinite(Date.parse(h.at)));
-  const developers = raw.team
-    .filter((t) => t.active)
-    .map((t) => {
-      /* The report's roster often still carries slot placeholders where a real
-         name belongs, so a correction saved on the dashboard wins over it. */
-      const patch = raw.teamEdits[t.memberKey];
-      const reported = { name: t.name || t.slot, role: t.slot, workstream: t.area };
-      const name = patch?.name || reported.name;
-      const updated = cases.filter((c) => c.tracking?.byMemberKey === t.memberKey);
-      const contributions = events.filter((h) => h.byMemberKey === t.memberKey).length;
-      const named = tasks.filter((task) => task.assignee === name);
-      return {
-        id: t.memberKey,
-        name,
-        initials: name
-          .split(/\s+/)
-          .map((n) => n[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase(),
-        role: patch?.role || reported.role,
-        workstream: patch?.workstream || reported.workstream,
-        reported,
-        edited: Boolean(patch),
-        openTasks: updated.length + named.filter((task) => task.status !== "done").length,
-        openBugs: updated.filter(
-          (c) => c.tracking?.status === "open" || c.tracking?.status === "prog",
-        ).length,
-        resolved: updated.filter(
-          (c) => c.tracking?.status === "fixed" || c.tracking?.status === "ver",
-        ).length,
-        load: events.length ? Math.round((contributions / events.length) * 100) : 0,
-        online: false,
-      };
-    });
+  const roster = [
+    ...raw.team
+      .filter((member) => member.active && !raw.teamRemoved[member.memberKey])
+      .map((member) => ({
+        id: member.memberKey,
+        reported: {
+          name: member.name || member.slot,
+          role: member.slot,
+          workstream: member.area,
+        },
+        source: "report" as const,
+      })),
+    ...Object.entries(raw.teamAdded).map(([id, member]) => ({
+      id,
+      reported: { name: member.name, role: member.role, workstream: member.workstream },
+      source: "dashboard" as const,
+    })),
+  ];
+  const developers = roster.map((member) => {
+    const patch = member.source === "report" ? raw.teamEdits[member.id] : undefined;
+    const reported = member.reported;
+    const name = patch?.name || reported.name;
+    const updated = cases.filter((c) => c.tracking?.byMemberKey === member.id);
+    const contributions = events.filter((h) => h.byMemberKey === member.id).length;
+    const named = tasks.filter((task) => task.assignee === name);
+    return {
+      id: member.id,
+      name,
+      initials: name
+        .split(/\s+/)
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase(),
+      role: patch?.role || reported.role,
+      workstream: patch?.workstream || reported.workstream,
+      reported,
+      edited: Boolean(patch) || member.source === "dashboard",
+      source: member.source,
+      openTasks: updated.length + named.filter((task) => task.status !== "done").length,
+      openBugs: updated.filter(
+        (c) => c.tracking?.status === "open" || c.tracking?.status === "prog",
+      ).length,
+      resolved: updated.filter(
+        (c) => c.tracking?.status === "fixed" || c.tracking?.status === "ver",
+      ).length,
+      load: events.length ? Math.round((contributions / events.length) * 100) : 0,
+      online: false,
+    };
+  });
   const activity = [
     ...raw.automation.map((a, i) => ({
       id: `auto-${i}-${a.at}`,
@@ -448,6 +552,16 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
   const now = today();
 
   return {
+    testCaseProjects,
+    projects: testCaseProjects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      date: project.date ?? null,
+      cases: project.groups.reduce((sum, group) => sum + group.rows.length, 0),
+      workstreams: project.groups.length,
+    })),
+    /* Replaced by scopeDashboard once a project is picked in the header. */
+    activeProjectId: ALL_PROJECTS as string,
     workstreams,
     tasks,
     bugs,
@@ -478,6 +592,68 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
 }
 
 export type Dashboard = ReturnType<typeof deriveDashboard>;
+export type DashboardProject = Dashboard["projects"][number];
+
+const isClosedBug = (status: BugStatus) =>
+  ["fixed", "verified", "closed", "wont-fix"].includes(status);
+
+/** Narrows a whole-register dashboard down to one project.
+ *
+ *  Test cases and workstreams carry a projectId, so they scope exactly. Tasks,
+ *  defects and roster rows only name a workstream, so they are matched by that
+ *  name — and anything whose workstream belongs to no project at all (a card
+ *  created from the board with a free-text module, say) stays with the first
+ *  project, which is where every record that predates projects lives. */
+export function scopeDashboard(full: Dashboard, projectId: string): Dashboard {
+  if (projectId === ALL_PROJECTS) return { ...full, activeProjectId: ALL_PROJECTS };
+  const active = full.testCaseProjects.find((p) => p.id === projectId) || full.testCaseProjects[0];
+  if (!active) return { ...full, activeProjectId: ALL_PROJECTS };
+  /* One project means the whole register is that project — nothing to filter,
+     and the report-side totals stay exactly as they were derived. */
+  if (full.testCaseProjects.length < 2) return { ...full, activeProjectId: active.id };
+
+  const mine = new Set(active.groups.map((group) => group.name));
+  const claimed = new Set(
+    full.testCaseProjects.flatMap((project) => project.groups.map((group) => group.name)),
+  );
+  const isPrimary = full.testCaseProjects[0]?.id === active.id;
+  const owns = (workstream: string) =>
+    mine.has(workstream) || (isPrimary && !claimed.has(workstream));
+
+  const workstreams = full.workstreams.filter((w) => w.projectId === active.id);
+  const testCases = full.testCases.filter((c) => c.projectId === active.id);
+  const tasks = full.tasks.filter((t) => owns(t.workstream));
+  const bugs = full.bugs.filter((b) => owns(b.module));
+  const developers = full.developers.filter((d) => owns(d.workstream));
+  const now = today();
+
+  return {
+    ...full,
+    activeProjectId: active.id,
+    workstreams,
+    testCases,
+    tasks,
+    bugs,
+    developers,
+    severityMix: SEVERITIES.map((key) => ({
+      key,
+      name: key.charAt(0).toUpperCase() + key.slice(1),
+      value: bugs.filter((b) => b.severity === key).length,
+    })).filter((s) => s.value > 0),
+    totals: {
+      testCases: testCases.length,
+      passed: testCases.filter((c) => c.status === "pass").length,
+      failed: testCases.filter((c) => c.status === "fail").length,
+      openBugs: bugs.filter((b) => !isClosedBug(b.status)).length,
+      openTasks: tasks.filter((t) => t.status !== "done").length,
+      scheduled:
+        tasks.filter((t) => t.status === "scheduled").length +
+        bugs.filter((b) => b.status === "scheduled").length,
+      breached: [...tasks, ...bugs].filter((r) => r.breached).length,
+      dueToday: [...tasks, ...bugs].filter((r) => r.dueDate === now).length,
+    },
+  };
+}
 
 export function useDashboardQuery() {
   const queryClient = useQueryClient();
@@ -502,10 +678,15 @@ export function useDashboardQuery() {
     retry: 1,
   });
 }
+/** Every page reads the board through here, so the header's project switcher
+ *  scopes the whole dashboard without each route having to filter for itself. */
 export function useDashboard() {
   const query = useDashboardQuery();
-  if (!query.data) throw new Error("Dashboard must render within its data boundary.");
-  return query.data;
+  const { projectId } = useProject();
+  const data = query.data;
+  const scoped = useMemo(() => (data ? scopeDashboard(data, projectId) : null), [data, projectId]);
+  if (!scoped) throw new Error("Dashboard must render within its data boundary.");
+  return scoped;
 }
 
 async function send(url: string, method: string, payload?: unknown) {
@@ -562,6 +743,11 @@ export const useUpdateRecord = () =>
 
 export type TeamEdit = { name?: string; role?: string; workstream?: string; by?: string };
 
+export const useCreateTeamMember = () =>
+  useBoardMutation((draft: Required<Pick<TeamEdit, "name" | "role" | "workstream">>) =>
+    send("/api/team", "POST", draft),
+  );
+
 export const useUpdateTeamMember = () =>
   useBoardMutation(({ id, ...rest }: TeamEdit & { id: string }) =>
     send(`/api/team/${encodeURIComponent(id)}`, "PATCH", rest),
@@ -569,7 +755,13 @@ export const useUpdateTeamMember = () =>
 
 /** Drops a correction so the member falls back to whatever the report says. */
 export const useResetTeamMember = () =>
+  useBoardMutation((id: string) => send(`/api/team/${encodeURIComponent(id)}`, "PATCH", {}));
+
+export const useDeleteTeamMember = () =>
   useBoardMutation((id: string) => send(`/api/team/${encodeURIComponent(id)}`, "DELETE"));
+
+export const useSaveTestCaseWorkspace = () =>
+  useBoardMutation((workspace: TestCaseWorkspace) => send("/api/test-cases", "PUT", workspace));
 
 /** Moves a card whether it came from the report or from the overlay; the two
  *  need different endpoints, and no caller should have to remember which. */

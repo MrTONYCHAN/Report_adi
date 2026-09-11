@@ -1,5 +1,6 @@
 import { AccessGate } from "@/components/dashboard/access-gate";
 import { DashboardDataBoundary } from "@/components/dashboard/data-boundary";
+import { ProjectProvider } from "@/lib/project";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -91,7 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
 
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
@@ -111,12 +112,14 @@ function RootComponent() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <HeadContent />
-        <AccessGate>
-          <DashboardDataBoundary>
-            <Outlet key={locationKey} />
-          </DashboardDataBoundary>
-        </AccessGate>
+        <ProjectProvider>
+          <HeadContent />
+          <AccessGate>
+            <DashboardDataBoundary>
+              <Outlet key={locationKey} />
+            </DashboardDataBoundary>
+          </AccessGate>
+        </ProjectProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

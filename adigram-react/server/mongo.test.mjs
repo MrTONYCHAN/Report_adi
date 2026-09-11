@@ -150,6 +150,48 @@ test(
         assert.equal(data.items.find((i) => i.kind === "bug").status, "in-progress");
         assert.ok(data.automation.length > 0);
       });
+      await t.test("test-case workstreams and rows save as one editable workspace", async () => {
+        const workspace = {
+          groups: [
+            {
+              id: "D1",
+              name: "Auth and scope",
+              date: "2026-09-11",
+              rows: [
+                {
+                  id: "D1-01",
+                  name: "Edited test case",
+                  status: "pass",
+                  defectStatus: "verified",
+                  owner: "Tester",
+                  updated: "2026-09-11",
+                },
+                {
+                  id: "D1-02",
+                  name: "Added test case",
+                  status: "not-run",
+                  defectStatus: "untracked",
+                  owner: "",
+                  updated: null,
+                },
+              ],
+            },
+          ],
+        };
+        assert.equal((await request("/api/test-cases", "PUT", workspace)).status, 200);
+        const data = (await request("/api/dashboard")).body;
+        assert.equal(data.testCaseWorkspace.groups[0].name, "Auth and scope");
+        assert.equal(data.testCaseWorkspace.groups[0].rows.length, 2);
+        const fresh = createMongoRepository({ uri, dbName: "migration_test" });
+        try {
+          assert.equal(
+            await fresh.run(({ store }) => store.testCaseWorkspace.groups[0].rows[1].id),
+            "D1-02",
+          );
+        } finally {
+          await fresh.close();
+        }
+      });
       await t.test(
         "failed transaction rolls back and repeated import preserves edits",
         async () => {

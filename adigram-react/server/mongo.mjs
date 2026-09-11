@@ -32,6 +32,9 @@ export const COLLECTIONS = [
   "bugs",
   "recordOverrides",
   "teamEdits",
+  "teamAdditions",
+  "teamRemovals",
+  "testCaseWorkspace",
   "automationEvents",
   "workflowRules",
   "versions",
@@ -53,6 +56,14 @@ export function documentsFor(report, store) {
       _id: key,
     })),
     teamEdits: Object.entries(store.team).map(([key, value]) => ({ ...value, _id: key })),
+    teamAdditions: Object.entries(store.teamAdded || {}).map(([key, value]) => ({
+      ...value,
+      _id: key,
+    })),
+    teamRemovals: Object.keys(store.teamRemoved || {}).map((key) => ({ _id: key, removed: true })),
+    testCaseWorkspace: store.testCaseWorkspace
+      ? [{ ...store.testCaseWorkspace, _id: "workspace" }]
+      : [],
     automationEvents: store.automation.map((value, i) => ({ ...value, _id: String(i), order: i })),
     workflowRules: Object.entries(store.rules).map(([key, enabled]) => ({ _id: key, enabled })),
     versions: versions.map((value, i) => ({ ...value, _id: String(value.seq ?? i) })),
@@ -95,6 +106,11 @@ export function dataFrom(documents) {
       items: [...documents.tasks, ...documents.bugs].map(clean),
       overrides: Object.fromEntries(documents.recordOverrides.map((r) => [r._id, clean(r)])),
       team: Object.fromEntries(documents.teamEdits.map((r) => [r._id, clean(r)])),
+      teamAdded: Object.fromEntries(documents.teamAdditions.map((r) => [r._id, clean(r)])),
+      teamRemoved: Object.fromEntries(documents.teamRemovals.map((r) => [r._id, true])),
+      testCaseWorkspace: documents.testCaseWorkspace[0]
+        ? clean(documents.testCaseWorkspace[0])
+        : null,
       automation: documents.automationEvents
         .sort((a, b) => a.order - b.order)
         .map(({ _id, order, ...r }) => r),
@@ -131,6 +147,7 @@ export async function readDocuments(db, session) {
 
 export function createMongoRepository(options = {}) {
   let client;
+  let initialization;
   async function connect() {
     if (!client) {
       const uri = options.uri || process.env.MONGODB_URI;
@@ -138,7 +155,10 @@ export function createMongoRepository(options = {}) {
       client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000, ignoreUndefined: true });
     }
     await client.connect();
-    return client.db(options.dbName || process.env.MONGODB_DB || "adigrams_dashboard");
+    const db = client.db(options.dbName || process.env.MONGODB_DB || "adigrams_dashboard");
+    initialization ??= ensureCollections(db);
+    await initialization;
+    return db;
   }
   return {
     async run(action) {

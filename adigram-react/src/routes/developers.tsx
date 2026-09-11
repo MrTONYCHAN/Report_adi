@@ -1,33 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  PolarAngleAxis,
-  PolarGrid,
-  Radar,
-  RadarChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
-import { Check, Loader2, Pencil, RotateCcw, Users, X } from "lucide-react";
+  Check,
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+  UserRoundPlus,
+  Users,
+  X,
+} from "lucide-react";
 import { Shell } from "@/components/dashboard/shell";
-import { EmptyState, Panel } from "@/components/dashboard/bits";
+import { EmptyState, Panel, StatCard } from "@/components/dashboard/bits";
 import { ExportMenu } from "@/components/dashboard/export-menu";
-import { useDashboard, useResetTeamMember, useUpdateTeamMember } from "@/lib/data";
+import {
+  useCreateTeamMember,
+  useDashboard,
+  useDeleteTeamMember,
+  useResetTeamMember,
+  useUpdateTeamMember,
+} from "@/lib/data";
 import type { Column } from "@/lib/export";
 
 export const Route = createFileRoute("/developers")({
   head: () => ({
     meta: [
-      { title: "Developers — ADIGRAMS 2.0 Readiness" },
-      {
-        name: "description",
-        content: "Editable team roster with recorded remediation contributions.",
-      },
-      { property: "og:title", content: "Developers — ADIGRAMS 2.0 Readiness" },
-      {
-        property: "og:description",
-        content: "Workload and ownership across the ADIGRAMS 2.0 engineering team.",
-      },
+      { title: "Developers - ADIGRAMS 2.0 Readiness" },
+      { name: "description", content: "Editable engineering roster and workload overview." },
     ],
   }),
   component: Developers,
@@ -52,33 +54,35 @@ const exportColumns: Column<DeveloperRow>[] = [
   { key: "openBugs", header: "Open", value: (d) => d.openBugs },
   { key: "resolved", header: "Resolved", value: (d) => d.resolved },
   { key: "load", header: "Share of updates", value: (d) => `${d.load}%` },
-  { key: "edited", header: "Edited here", value: (d) => (d.edited ? "Yes" : "") },
 ];
 
 const field =
-  "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm outline-none transition-colors focus-visible:border-primary";
+  "h-9 w-full rounded-md border border-border bg-surface px-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/10";
+const blank = { name: "", role: "Developer", workstream: "" };
 
 function Developers() {
   const { developers } = useDashboard();
-  const radar = developers.map((d) => ({ name: d.initials, load: d.load, resolved: d.resolved }));
-
+  const create = useCreateTeamMember();
   const save = useUpdateTeamMember();
   const reset = useResetTeamMember();
+  const remove = useDeleteTeamMember();
   const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ name: "", role: "", workstream: "" });
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState(blank);
   const [error, setError] = useState<string | null>(null);
+  const openAssignments = developers.reduce((sum, d) => sum + d.openTasks + d.openBugs, 0);
+  const resolved = developers.reduce((sum, d) => sum + d.resolved, 0);
+  const pending = create.isPending || save.isPending || reset.isPending || remove.isPending;
 
   function startEdit(row: (typeof developers)[number]) {
+    setAdding(false);
     setEditing(row.id);
     setDraft({ name: row.name, role: row.role, workstream: row.workstream });
     setError(null);
   }
 
   async function commit(id: string) {
-    if (!draft.name.trim()) {
-      setError("A member needs a name.");
-      return;
-    }
+    if (!draft.name.trim()) return setError("A developer needs a name.");
     try {
       await save.mutateAsync({
         id,
@@ -87,141 +91,195 @@ function Developers() {
         workstream: draft.workstream.trim(),
       });
       setEditing(null);
+      setDraft(blank);
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The change could not be saved.");
     }
   }
 
-  const pending = save.isPending || reset.isPending;
+  async function addDeveloper() {
+    if (!draft.name.trim()) return setError("Enter a name for the new developer.");
+    try {
+      await create.mutateAsync({
+        name: draft.name.trim(),
+        role: draft.role.trim() || "Developer",
+        workstream: draft.workstream.trim() || "Unassigned",
+      });
+      setAdding(false);
+      setDraft(blank);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The developer could not be added.");
+    }
+  }
+
+  async function deleteDeveloper(row: (typeof developers)[number]) {
+    if (!window.confirm(`Remove ${row.name} from the active roster?`)) return;
+    try {
+      await remove.mutateAsync(row.id);
+      if (editing === row.id) setEditing(null);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The developer could not be removed.");
+    }
+  }
 
   return (
     <Shell
       title="Developers"
-      subtitle={`Roster · ${developers.length} active member${developers.length === 1 ? "" : "s"} · edit a row to correct a name`}
+      subtitle={`${developers.length} active team members and their recorded workload`}
       actions={
         <ExportMenu
           spec={{
             base: "developers",
             title: "Engineering roster",
-            subtitle: `${developers.length} active member(s) · exported from the ADIGRAMS 2.0 readiness dashboard`,
+            subtitle: `${developers.length} active member(s) exported from the readiness dashboard`,
             columns: exportColumns,
             rows: developers,
           }}
         />
       }
     >
-      <div className="grid items-start gap-4 xl:grid-cols-4">
-        <Panel
-          title="Share of recorded updates"
-          subtitle="Each member's portion of the remediation log"
-          className="xl:col-span-1"
-          delay={0}
-        >
-          {radar.length === 0 ? (
-            <EmptyState icon={Users} title="No roster to chart" />
-          ) : (
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radar} outerRadius="72%">
-                  <PolarGrid stroke="var(--border)" />
-                  <PolarAngleAxis dataKey="name" fontSize={12} stroke="var(--muted-foreground)" />
-                  <Radar
-                    dataKey="load"
-                    name="Updates %"
-                    stroke="var(--chart-1)"
-                    fill="var(--chart-1)"
-                    fillOpacity={0.25}
-                    animationDuration={1100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: 14,
-                      border: "1px solid var(--border)",
-                      background: "var(--surface)",
-                      fontSize: 12,
-                    }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </Panel>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Active developers"
+          value={developers.length}
+          icon={Users}
+          hint="Current roster"
+        />
+        <StatCard
+          label="Open assignments"
+          value={openAssignments}
+          icon={ClipboardList}
+          tone="warning"
+          hint="Tasks and defects"
+          delay={50}
+        />
+        <StatCard
+          label="Resolved updates"
+          value={resolved}
+          icon={CheckCircle2}
+          tone="success"
+          hint="Recorded remediation"
+          delay={100}
+        />
+      </div>
 
+      <div className="mt-4">
         <Panel
           title="Team roster"
-          subtitle="Names and areas can be corrected; the counts are recorded facts"
-          className="xl:col-span-3"
+          subtitle="Manage names, roles and workstream ownership"
+          delay={140}
           bodyClassName="-mx-1"
-          delay={80}
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                setAdding(true);
+                setEditing(null);
+                setDraft(blank);
+                setError(null);
+              }}
+              className="press inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
+            >
+              <UserRoundPlus className="size-4" />
+              Add developer
+            </button>
+          }
         >
           {error && (
-            <p role="alert" className="mx-1 mb-3 text-sm text-destructive">
+            <p
+              role="alert"
+              className="mx-1 mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               {error}
             </p>
           )}
 
+          {adding && (
+            <div className="mx-1 mb-3 grid gap-2 rounded-md border border-primary/35 bg-primary/5 p-3 sm:grid-cols-[1.2fr_1fr_1.4fr_auto]">
+              <input
+                aria-label="New developer name"
+                placeholder="Developer name"
+                autoFocus
+                className={field}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              />
+              <input
+                aria-label="New developer role"
+                placeholder="Role"
+                className={field}
+                value={draft.role}
+                onChange={(e) => setDraft({ ...draft, role: e.target.value })}
+              />
+              <input
+                aria-label="New developer workstream"
+                placeholder="Workstream"
+                className={field}
+                value={draft.workstream}
+                onChange={(e) => setDraft({ ...draft, workstream: e.target.value })}
+              />
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => void addDeveloper()}
+                  disabled={pending}
+                  className="press inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  {create.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Plus className="size-4" />
+                  )}
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdding(false);
+                    setDraft(blank);
+                    setError(null);
+                  }}
+                  title="Cancel"
+                  className="grid size-9 place-items-center rounded-md border border-border bg-surface text-muted-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div
-            className="sticky-head overflow-x-auto px-1"
+            className="mx-1 overflow-x-auto rounded-md border border-border"
             role="region"
             aria-label="Team roster"
             tabIndex={0}
           >
-            <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-sm">
-              <caption className="sr-only">
-                Team members with their role, workstream and recorded remediation contributions
-              </caption>
+            <table className="report-table w-full min-w-[860px] border-collapse bg-surface text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                  <th scope="col" className="px-3 pb-2 pt-1 font-semibold">
-                    Member
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 font-semibold">
-                    Role
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 font-semibold">
-                    Workstream
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 text-right font-semibold">
-                    Updated
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 text-right font-semibold">
-                    Open
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 text-right font-semibold">
-                    Resolved
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 text-right font-semibold">
-                    Share
-                  </th>
-                  <th scope="col" className="px-3 pb-2 pt-1 text-right font-semibold">
-                    Actions
-                  </th>
+                <tr className="bg-surface-2 text-left text-[11px] font-semibold uppercase text-muted-foreground">
+                  <th className="px-3 py-2.5">Member</th>
+                  <th className="px-3 py-2.5">Role</th>
+                  <th className="px-3 py-2.5">Workstream</th>
+                  <th className="px-3 py-2.5 text-right">Updated</th>
+                  <th className="px-3 py-2.5 text-right">Open</th>
+                  <th className="px-3 py-2.5 text-right">Resolved</th>
+                  <th className="px-3 py-2.5 text-right">Share</th>
+                  <th className="px-3 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {developers.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="pt-4">
-                      <EmptyState
-                        icon={Users}
-                        title="No active team members"
-                        hint="The roster comes from the readiness report; nobody on it is marked active."
-                      />
-                    </td>
-                  </tr>
-                )}
-
-                {developers.map((d, i) => {
-                  const isEditing = editing === d.id;
+                {developers.map((developer) => {
+                  const isEditing = editing === developer.id;
                   return (
                     <tr
-                      key={d.id}
-                      id={d.id}
-                      style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
-                      className="rise [&>td]:border-y [&>td]:border-border [&>td]:bg-surface-2 [&>td]:py-2.5 [&>td]:transition-colors [&>td]:duration-200"
+                      key={developer.id}
+                      id={developer.id}
+                      className="border-t border-border hover:bg-surface-2"
                     >
-                      <td className="rounded-l-2xl border-l px-3">
+                      <td className="px-3 py-2.5">
                         {isEditing ? (
                           <input
                             aria-label="Name"
@@ -233,22 +291,23 @@ function Developers() {
                           />
                         ) : (
                           <span className="flex items-center gap-2.5">
-                            <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
-                              {d.initials}
+                            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-xs font-bold text-primary">
+                              {developer.initials}
                             </span>
-                            <span className="min-w-0">
-                              <span className="block truncate font-medium">{d.name}</span>
-                              {d.edited && (
-                                <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  Edited here
-                                </span>
-                              )}
+                            <span>
+                              <span className="block font-medium">{developer.name}</span>
+                              <span className="block text-[10px] text-muted-foreground">
+                                {developer.source === "dashboard"
+                                  ? "Added here"
+                                  : developer.edited
+                                    ? "Edited here"
+                                    : "Report roster"}
+                              </span>
                             </span>
                           </span>
                         )}
                       </td>
-
-                      <td className="px-3 text-muted-foreground">
+                      <td className="px-3 py-2.5 text-muted-foreground">
                         {isEditing ? (
                           <input
                             aria-label="Role"
@@ -258,11 +317,10 @@ function Developers() {
                             onChange={(e) => setDraft({ ...draft, role: e.target.value })}
                           />
                         ) : (
-                          d.role
+                          developer.role
                         )}
                       </td>
-
-                      <td className="px-3 text-muted-foreground">
+                      <td className="px-3 py-2.5 text-muted-foreground">
                         {isEditing ? (
                           <input
                             aria-label="Workstream"
@@ -272,67 +330,79 @@ function Developers() {
                             onChange={(e) => setDraft({ ...draft, workstream: e.target.value })}
                           />
                         ) : (
-                          d.workstream
+                          developer.workstream
                         )}
                       </td>
-
-                      <td className="px-3 text-right tabular-nums">{d.openTasks}</td>
-                      <td className="px-3 text-right tabular-nums">{d.openBugs}</td>
-                      <td className="px-3 text-right tabular-nums">{d.resolved}</td>
-
-                      <td className="px-3 text-right tabular-nums text-muted-foreground">
-                        {d.load}%
+                      <td className="px-3 py-2.5 text-right tabular-nums">{developer.openTasks}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{developer.openBugs}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{developer.resolved}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                        {developer.load}%
                       </td>
-
-                      <td className="rounded-r-2xl border-r px-3">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
                           {isEditing ? (
                             <>
                               <button
-                                onClick={() => void commit(d.id)}
+                                type="button"
+                                onClick={() => void commit(developer.id)}
                                 disabled={pending}
-                                className="press inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                                title="Save developer"
+                                className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground disabled:opacity-50"
                               >
                                 {save.isPending ? (
-                                  <Loader2 className="size-3.5 animate-spin" />
+                                  <Loader2 className="size-4 animate-spin" />
                                 ) : (
-                                  <Check className="size-3.5" />
+                                  <Check className="size-4" />
                                 )}
-                                Save
                               </button>
                               <button
+                                type="button"
                                 onClick={() => {
                                   setEditing(null);
                                   setError(null);
                                 }}
-                                aria-label="Cancel editing"
                                 title="Cancel"
-                                className="press grid size-8 place-items-center rounded-full border border-border bg-surface text-muted-foreground hover:text-foreground"
+                                className="grid size-8 place-items-center rounded-md border border-border bg-surface text-muted-foreground"
                               >
-                                <X className="size-3.5" />
+                                <X className="size-4" />
                               </button>
                             </>
                           ) : (
                             <>
-                              {d.edited && (
+                              <button
+                                type="button"
+                                onClick={() => startEdit(developer)}
+                                title="Edit developer"
+                                className="grid size-8 place-items-center rounded-md border border-border bg-surface text-muted-foreground hover:text-primary"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              {developer.source === "report" && developer.edited && (
                                 <button
+                                  type="button"
                                   onClick={() =>
-                                    void reset.mutateAsync(d.id).catch(() => undefined)
+                                    void reset
+                                      .mutateAsync(developer.id)
+                                      .catch(() =>
+                                        setError("The report values could not be restored."),
+                                      )
                                   }
                                   disabled={pending}
-                                  aria-label="Reset to the value the report supplied"
-                                  title="Reset to the report value"
-                                  className="press grid size-8 place-items-center rounded-full border border-border bg-surface text-muted-foreground hover:text-foreground disabled:opacity-60"
+                                  title="Restore report values"
+                                  className="grid size-8 place-items-center rounded-md border border-border bg-surface text-muted-foreground"
                                 >
                                   <RotateCcw className="size-3.5" />
                                 </button>
                               )}
                               <button
-                                onClick={() => startEdit(d)}
-                                className="press inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary/40"
+                                type="button"
+                                onClick={() => void deleteDeveloper(developer)}
+                                disabled={pending}
+                                title="Remove developer"
+                                className="grid size-8 place-items-center rounded-md border border-border bg-surface text-muted-foreground hover:border-destructive/40 hover:text-destructive"
                               >
-                                <Pencil className="size-3.5" />
-                                Edit
+                                <Trash2 className="size-3.5" />
                               </button>
                             </>
                           )}
@@ -343,13 +413,15 @@ function Developers() {
                 })}
               </tbody>
             </table>
+            {developers.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title="No active developers"
+                hint="Add a developer to start the roster."
+                className="m-3"
+              />
+            )}
           </div>
-
-          <p className="mx-1 mt-3 text-xs leading-relaxed text-muted-foreground">
-            Edits are saved to the dashboard&apos;s own register — the readiness report file is
-            never rewritten. Updated, Open, Resolved and Share are computed from the recorded
-            remediation log and cannot be typed over.
-          </p>
         </Panel>
       </div>
     </Shell>

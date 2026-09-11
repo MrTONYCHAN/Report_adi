@@ -1,10 +1,23 @@
 import { nextId } from "./store.mjs";
 import { createMongoRepository } from "./mongo.mjs";
 import { runAutomation, canMove, TRANSITIONS, TERMINAL, SLA_DAYS } from "./workflow.mjs";
+import { randomUUID } from "node:crypto";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "unassessed"];
 const MAX_BODY = 256 * 1024;
 const MAX_LOG = 500;
+const TEST_OUTCOMES = ["pass", "partial", "not-run", "fail"];
+const DEFECT_STATUSES = [
+  "scheduled",
+  "untracked",
+  "open",
+  "in-progress",
+  "blocked",
+  "fixed",
+  "verified",
+  "closed",
+  "wont-fix",
+];
 
 const json = (res, code, payload) => {
   res.statusCode = code;
@@ -54,6 +67,59 @@ const text = (value, max, fallback = "") =>
 function day(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   return Number.isFinite(Date.parse(value)) ? value : null;
+}
+
+function testCaseWorkspace(input) {
+  const incomingProjects = Array.isArray(input.projects)
+    ? input.projects
+    : Array.isArray(input.groups)
+      ? [{ id: "PROJECT-1", name: "ADIGRAM", date: null, groups: input.groups }]
+      : null;
+  if (!incomingProjects || incomingProjects.length > 20)
+    throw new Error("Invalid test case projects");
+  const projectIds = new Set();
+  const groupIds = new Set();
+  const rowIds = new Set();
+  const projects = incomingProjects.map((project, projectIndex) => {
+    const projectId = text(project.id, 40, `PROJECT-${projectIndex + 1}`);
+    if (projectIds.has(projectId)) throw new Error("Duplicate test case project ID");
+    projectIds.add(projectId);
+    if (!Array.isArray(project.groups) || project.groups.length > 40)
+      throw new Error("Invalid test case groups");
+    return {
+      id: projectId,
+      name: text(project.name, 160, "Untitled project"),
+      date: day(project.date),
+      groups: project.groups.map((group, groupIndex) => {
+        const id = text(group.id, 40, `D${groupIndex + 1}`);
+        if (groupIds.has(id)) throw new Error("Duplicate test case group ID");
+        groupIds.add(id);
+        if (!Array.isArray(group.rows) || group.rows.length > 500)
+          throw new Error("Invalid test case rows");
+        return {
+          id,
+          name: text(group.name, 160, "Untitled workstream"),
+          date: day(group.date),
+          rows: group.rows.map((row, rowIndex) => {
+            const rowId = text(row.id, 40, `${id}-${String(rowIndex + 1).padStart(2, "0")}`);
+            if (rowIds.has(rowId)) throw new Error("Duplicate test case ID");
+            rowIds.add(rowId);
+            return {
+              id: rowId,
+              name: text(row.name, 300, "Untitled test case"),
+              status: TEST_OUTCOMES.includes(row.status) ? row.status : "not-run",
+              defectStatus: DEFECT_STATUSES.includes(row.defectStatus)
+                ? row.defectStatus
+                : "untracked",
+              owner: text(row.owner, 120),
+              updated: day(row.updated),
+            };
+          }),
+        };
+      }),
+    };
+  });
+  return { projects, updatedAt: new Date().toISOString() };
 }
 
 function draft(input, store) {
@@ -176,6 +242,9 @@ const overlay = (store) => ({
   overrides: store.overrides,
   automation: store.automation.slice(0, 80),
   teamEdits: store.team,
+  teamAdded: store.teamAdded || {},
+  teamRemoved: store.teamRemoved || {},
+  testCaseWorkspace: store.testCaseWorkspace,
   transitions: TRANSITIONS,
   slaDays: SLA_DAYS,
 });
@@ -188,7 +257,7 @@ export function dashboardApi(options = {}) {
 
     try {
       // Consume the request once, outside the retryable database transaction.
-      const requestBody = ["POST", "PATCH"].includes(req.method) ? await body(req) : {};
+      const requestBody = ["POST", "PATCH", "PUT"].includes(req.method) ? await body(req) : {};
       const result = await repository.run(async ({ report, store: currentStore }) => {
         const readStore = () => currentStore;
         const json = (_res, code, payload) => ({ code, payload });
@@ -203,6 +272,30 @@ export function dashboardApi(options = {}) {
           const item = draft(requestBody, store);
           store.items.push(item);
           return json(res, 201, { item, ...overlay(withAutomation(readStore())) });
+        }
+
+        if (pathname === "/api/team" && req.method === "POST") {
+          const store = readStore();
+          store.teamAdded ||= {};
+          const id = `DEV-${randomUUID().slice(0, 8).toUpperCase()}`;
+          const now = new Date().toISOString();
+          store.teamAdded[id] = {
+            name: text(requestBody.name, 120, "New developer"),
+            role: text(requestBody.role, 120, "Developer"),
+            workstream: text(requestBody.workstream, 160, "Unassigned"),
+            createdAt: now,
+            updatedAt: now,
+          };
+          return json(res, 201, { id, member: store.teamAdded[id], ...overlay(store) });
+        }
+
+        if (pathname === "/api/test-cases" && req.method === "PUT") {
+          const store = readStore();
+          store.testCaseWorkspace = testCaseWorkspace(requestBody);
+          return json(res, 200, {
+            testCaseWorkspace: store.testCaseWorkspace,
+            ...overlay(store),
+          });
         }
 
         const itemMatch = pathname.match(/^\/api\/items\/([A-Za-z0-9-]{1,40})$/);
@@ -272,7 +365,8 @@ export function dashboardApi(options = {}) {
 
           // An override for a member the report does not have would never merge
           // onto anything; refusing it keeps the overlay free of orphans.
-          if (!report.team.some((m) => m.memberKey === key))
+          const added = store.teamAdded?.[key];
+          if (!added && !report.team.some((m) => m.memberKey === key))
             return json(res, 404, { error: "No such team member" });
 
           const now = new Date().toISOString();
@@ -290,7 +384,9 @@ export function dashboardApi(options = {}) {
             }
           }
 
-          if (Object.keys(patched).length === 0) {
+          if (added) {
+            store.teamAdded[key] = { ...added, ...patched, updatedAt: now };
+          } else if (Object.keys(patched).length === 0) {
             delete store.team[key];
           } else {
             store.team[key] = { ...patched, by, at: now };
@@ -300,7 +396,16 @@ export function dashboardApi(options = {}) {
 
         if (teamMatch && req.method === "DELETE") {
           const store = readStore();
-          delete store.team[teamMatch[1]];
+          const key = teamMatch[1];
+          if (store.teamAdded?.[key]) {
+            delete store.teamAdded[key];
+          } else if (report.team.some((member) => member.memberKey === key)) {
+            store.teamRemoved ||= {};
+            store.teamRemoved[key] = true;
+            delete store.team[key];
+          } else {
+            return json(res, 404, { error: "No such team member" });
+          }
           return json(res, 200, overlay(store));
         }
 

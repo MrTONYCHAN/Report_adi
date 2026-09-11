@@ -6,6 +6,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Label,
   Legend,
   Pie,
   PieChart,
@@ -40,10 +41,10 @@ export const Route = createFileRoute("/")({
 });
 
 const tooltipStyle = {
-  borderRadius: 14,
+  borderRadius: 8,
   border: "1px solid var(--border)",
   background: "var(--surface)",
-  boxShadow: "var(--shadow-ios)",
+  boxShadow: "0 12px 28px -16px rgb(15 23 42 / 0.35)",
   fontSize: 12,
 };
 
@@ -223,14 +224,28 @@ function Overview() {
           className="xl:col-span-2"
           delay={220}
         >
-          <div className="h-[280px] w-full">
+          <div className="h-[310px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={workstreams}
                 margin={{ left: -18, right: 8, top: 8 }}
-                barCategoryGap={22}
+                barCategoryGap="28%"
               >
-                <CartesianGrid strokeDasharray="4 6" stroke="var(--border)" vertical={false} />
+                <defs>
+                  <linearGradient id="barPass" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.72} />
+                  </linearGradient>
+                  <linearGradient id="barPartial" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0.72} />
+                  </linearGradient>
+                  <linearGradient id="barFail" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0.72} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 5" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="id"
                   tickLine={false}
@@ -250,14 +265,17 @@ function Overview() {
                   dataKey="pass"
                   name="Pass"
                   stackId="a"
-                  fill="var(--chart-2)"
+                  fill="url(#barPass)"
+                  radius={[0, 0, 5, 5]}
+                  maxBarSize={72}
                   animationDuration={900}
                 />
                 <RBar
                   dataKey="partial"
                   name="Partial"
                   stackId="a"
-                  fill="var(--chart-3)"
+                  fill="url(#barPartial)"
+                  maxBarSize={72}
                   animationDuration={1000}
                 />
                 <RBar
@@ -265,14 +283,16 @@ function Overview() {
                   name="Not run"
                   stackId="a"
                   fill="var(--chart-neutral)"
+                  maxBarSize={72}
                   animationDuration={1100}
                 />
                 <RBar
                   dataKey="fail"
                   name="Fail"
                   stackId="a"
-                  fill="var(--chart-4)"
-                  radius={[8, 8, 0, 0]}
+                  fill="url(#barFail)"
+                  radius={[5, 5, 0, 0]}
+                  maxBarSize={72}
                   animationDuration={1200}
                 />
               </BarChart>
@@ -398,7 +418,7 @@ function Overview() {
               {openTasks.slice(0, 7).map((t) => (
                 <li
                   key={t.id}
-                  className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border bg-surface-2 px-3.5 py-2.5 transition-colors duration-200 hover:border-primary/30 ${
+                  className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border bg-surface-2 px-3.5 py-2.5 transition-colors duration-200 hover:border-primary/30 ${
                     t.breached ? "border-destructive/40" : "border-border"
                   }`}
                 >
@@ -443,6 +463,13 @@ function Overview() {
                     strokeWidth={3}
                     animationDuration={1000}
                   >
+                    <Label
+                      value={`${bugs.length} defects`}
+                      position="center"
+                      fill="var(--foreground)"
+                      fontSize={13}
+                      fontWeight={700}
+                    />
                     {severityMix.map((s) => (
                       <Cell
                         key={s.key}

@@ -10,7 +10,17 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_FILE = fileURLToPath(new URL("./adigram-store.json", import.meta.url));
 
-const EMPTY = { version: 1, items: [], overrides: {}, automation: [], rules: {}, team: {} };
+const EMPTY = {
+  version: 1,
+  items: [],
+  overrides: {},
+  automation: [],
+  rules: {},
+  team: {},
+  teamAdded: {},
+  teamRemoved: {},
+  testCaseWorkspace: null,
+};
 
 function file() {
   return process.env.ADIGRAM_STORE ? path.resolve(process.env.ADIGRAM_STORE) : DEFAULT_FILE;
@@ -28,6 +38,13 @@ export function readStore() {
       automation: Array.isArray(parsed.automation) ? parsed.automation : [],
       rules: parsed.rules && typeof parsed.rules === "object" ? parsed.rules : {},
       team: parsed.team && typeof parsed.team === "object" ? parsed.team : {},
+      teamAdded: parsed.teamAdded && typeof parsed.teamAdded === "object" ? parsed.teamAdded : {},
+      teamRemoved:
+        parsed.teamRemoved && typeof parsed.teamRemoved === "object" ? parsed.teamRemoved : {},
+      testCaseWorkspace:
+        parsed.testCaseWorkspace && typeof parsed.testCaseWorkspace === "object"
+          ? parsed.testCaseWorkspace
+          : null,
     };
   } catch {
     // A corrupt overlay must not take the report down with it.

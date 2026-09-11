@@ -11,6 +11,7 @@ import {
   RefreshCw,
   AlertTriangle,
   LockKeyhole,
+  PanelLeftClose,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -23,6 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { ProjectSwitcher } from "@/components/dashboard/project-switcher";
 import { useSignOut } from "@/lib/access";
 import { useDashboard, useDashboardQuery } from "@/lib/data";
 
@@ -48,7 +50,18 @@ export function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const { activity, bugs, developers, tasks, testCases, totals, sourceUpdatedAt } = useDashboard();
+  const {
+    activity,
+    bugs,
+    developers,
+    tasks,
+    testCases,
+    totals,
+    sourceUpdatedAt,
+    projects,
+    activeProjectId,
+  } = useDashboard();
+  const activeProject = projects.find((project) => project.id === activeProjectId);
   const { refetch, isFetching, dataUpdatedAt, error } = useDashboardQuery();
   const signOut = useSignOut();
 
@@ -69,6 +82,7 @@ export function Shell({
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const matches = findings.filter((f) =>
@@ -92,13 +106,22 @@ export function Shell({
           <p className="truncate text-sm font-bold tracking-tight">ADIGRAMS 2.0</p>
           <p className="truncate text-xs text-muted-foreground">Go-Live Control</p>
         </div>
+        <button
+          type="button"
+          title="Collapse navigation"
+          aria-label="Collapse navigation"
+          onClick={() => {
+            setOpen(false);
+            setDesktopExpanded(false);
+          }}
+          className="ml-auto grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <PanelLeftClose className="size-4" />
+        </button>
       </div>
 
       {/* Nav */}
-      <nav
-        aria-label="Workspace"
-        className="flex-1 space-y-1 overflow-y-auto px-3 pb-4"
-      >
+      <nav aria-label="Workspace" className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Workspace
         </p>
@@ -139,7 +162,10 @@ export function Shell({
           Readiness report
         </p>
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-          {totals.testCases ? Math.round((totals.passed / totals.testCases) * 100) : 0}% passed ·{" "}
+          <span className="font-semibold text-foreground">
+            {activeProject ? activeProject.name : "All projects"}
+          </span>{" "}
+          · {totals.testCases ? Math.round((totals.passed / totals.testCases) * 100) : 0}% passed ·{" "}
           {totals.openBugs} open defects.
         </p>
         {totals.breached > 0 && (
@@ -170,16 +196,72 @@ export function Shell({
           Skip to content
         </a>
 
+        <aside
+          className={`fixed inset-y-0 left-0 z-30 hidden overflow-hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 sm:flex ${desktopExpanded ? "w-64" : "w-14"}`}
+        >
+          {desktopExpanded ? (
+            <div className="h-full w-64 shrink-0">{sidebar}</div>
+          ) : (
+            <div className="flex h-full w-14 shrink-0 flex-col items-center py-3">
+              <button
+                type="button"
+                onClick={() => setDesktopExpanded(true)}
+                aria-label="Expand navigation"
+                className="press grid size-10 place-items-center rounded-xl border border-sidebar-border bg-surface"
+              >
+                <img src="/favicon.svg" alt="" className="size-6" />
+              </button>
+              <nav
+                aria-label="Minimized workspace navigation"
+                className="mt-5 flex flex-1 flex-col gap-2"
+              >
+                {nav.map((item) => {
+                  const active = pathname === item.to;
+                  return (
+                    <Tooltip key={item.to}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          to={item.to}
+                          aria-label={item.label}
+                          aria-current={active ? "page" : undefined}
+                          className={`grid size-10 place-items-center rounded-xl transition-colors ${
+                            active
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          }`}
+                        >
+                          <item.icon className="size-4" />
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">{item.label}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
+        </aside>
+
         {/* Full-width layout — no sidebar offset */}
-        <div className="min-w-0">
+        <div
+          className={`min-w-0 transition-[padding] duration-200 ${desktopExpanded ? "sm:pl-64" : "sm:pl-14"}`}
+        >
           <header className="glass-panel sticky top-0 z-20">
             <div className="flex flex-wrap items-center gap-3 px-3 py-3.5">
-
+              <button
+                type="button"
+                onClick={() => setDesktopExpanded((value) => !value)}
+                className="press hidden rounded-xl border border-border bg-surface p-2.5 text-foreground sm:grid"
+                aria-label={desktopExpanded ? "Collapse navigation" : "Expand navigation"}
+                aria-expanded={desktopExpanded}
+              >
+                <HamburgerIcon />
+              </button>
               {/* Hamburger — visible on ALL screen sizes */}
               <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
                   <button
-                    className="press rounded-xl border border-border bg-surface p-2.5 text-foreground"
+                    className="press rounded-xl border border-border bg-surface p-2.5 text-foreground sm:hidden"
                     aria-label={open ? "Close menu" : "Open menu"}
                     aria-expanded={open}
                   >
@@ -197,6 +279,8 @@ export function Shell({
                   {sidebar}
                 </SheetContent>
               </Sheet>
+
+              <ProjectSwitcher />
 
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-base font-bold tracking-tight sm:text-lg">{title}</h1>
