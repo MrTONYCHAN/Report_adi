@@ -68,13 +68,16 @@ export function Shell({
   const nav = [
     { to: "/", label: "Overview", icon: LayoutDashboard, hint: "Readiness" },
     { to: "/developers", label: "Developers", icon: Users, hint: `${developers.length} members` },
-    { to: "/tasks", label: "Tasks", icon: ListChecks, hint: `${totals.openTasks} open` },
+    /* Tasks is commented out of the workspace. The /tasks route and its data are
+       untouched, so restoring the section is a matter of uncommenting this entry
+       and the two below it. */
+    // { to: "/tasks", label: "Tasks", icon: ListChecks, hint: `${totals.openTasks} open` },
     { to: "/bugs", label: "Bugs", icon: Bug, hint: `${totals.openBugs} open` },
     { to: "/test-cases", label: "Test Cases", icon: FlaskConical, hint: `${totals.testCases}` },
   ] as const;
 
   const findings = [
-    ...tasks.map((t) => ({ id: t.id, title: t.title, to: "/tasks" as const })),
+    // ...tasks.map((t) => ({ id: t.id, title: t.title, to: "/tasks" as const })),
     ...bugs.map((b) => ({ id: b.id, title: b.title, to: "/bugs" as const })),
     ...testCases.map((t) => ({ id: t.id, title: t.name, to: "/test-cases" as const })),
     ...developers.map((d) => ({ id: d.id, title: d.name, to: "/developers" as const })),
@@ -103,7 +106,7 @@ export function Shell({
           <ShieldCheck className="size-5" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold tracking-tight">ADIGRAMS 2.0</p>
+          <p className="truncate text-sm font-bold tracking-tight">Tribal Tasks</p>
           <p className="truncate text-xs text-muted-foreground">Go-Live Control</p>
         </div>
         <button

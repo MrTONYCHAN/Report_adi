@@ -29,13 +29,13 @@ import type { Column } from "@/lib/export";
 export const Route = createFileRoute("/tasks")({
   head: () => ({
     meta: [
-      { title: "Tasks — ADIGRAMS 2.0 Readiness" },
+      { title: "Tasks — Tribal Tasks Readiness" },
       {
         name: "description",
         content:
           "Remediation tasks by workstream, owner, severity, schedule and completion progress ahead of go-live.",
       },
-      { property: "og:title", content: "Tasks — ADIGRAMS 2.0 Readiness" },
+      { property: "og:title", content: "Tasks — Tribal Tasks Readiness" },
       {
         property: "og:description",
         content: "Track remediation work items, planned dates and their progress to sign-off.",
@@ -123,7 +123,7 @@ function Tasks() {
           spec={{
             base: "tasks",
             title: "Remediation tasks",
-            subtitle: `${visible.length} task(s) · exported from the ADIGRAMS 2.0 readiness dashboard`,
+            subtitle: `${visible.length} task(s) · exported from the Tribal Tasks readiness dashboard`,
             columns: exportColumns,
             rows: visible,
             extraSections: [

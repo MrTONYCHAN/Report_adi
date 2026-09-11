@@ -16,6 +16,7 @@ import {
 import { Shell } from "@/components/dashboard/shell";
 import { EmptyState, Toolbar } from "@/components/dashboard/bits";
 import { ExportMenu } from "@/components/dashboard/export-menu";
+import { ReviewStatus } from "@/components/dashboard/review-status";
 import {
   BUG_STATUSES,
   STATUS_LABELS,
@@ -35,6 +36,7 @@ type TestRow = {
   defectStatus: BugStatus;
   owner: string;
   updated: string;
+  finding: string;
 };
 type TestGroup = { id: string; name: string; date: string; rows: TestRow[] };
 type TestProject = { id: string; name: string; date: string; groups: TestGroup[] };
@@ -52,6 +54,7 @@ const exportColumns: Column<ExportRow>[] = [
   { key: "name", header: "Test case", value: (row) => row.name, width: 3600 },
   { key: "project", header: "Project", value: (row) => row.project, width: 1500 },
   { key: "workstream", header: "Workstream", value: (row) => row.workstream, width: 1800 },
+  { key: "finding", header: "Finding", value: (row) => row.finding, width: 6000 },
   { key: "status", header: "Outcome", value: (row) => row.status, width: 1200 },
   { key: "defectStatus", header: "Defect Status", value: (row) => row.defectStatus, width: 1400 },
   { key: "owner", header: "Owner", value: (row) => row.owner, width: 1500 },
@@ -61,7 +64,7 @@ const exportColumns: Column<ExportRow>[] = [
 export const Route = createFileRoute("/test-cases")({
   head: () => ({
     meta: [
-      { title: "Test Cases - ADIGRAMS 2.0 Readiness" },
+      { title: "Test Cases - Tribal Tasks Readiness" },
       { name: "description", content: "Editable test-case register grouped by workstream." },
     ],
   }),
@@ -195,7 +198,7 @@ function TestCases() {
     const search = query.trim().toLowerCase();
     return search
       ? activeGroup.rows.filter((row) =>
-          `${row.id} ${row.name} ${row.owner} ${row.status} ${row.defectStatus}`
+          `${row.id} ${row.name} ${row.finding} ${row.owner} ${row.status} ${row.defectStatus}`
             .toLowerCase()
             .includes(search),
         )
@@ -206,6 +209,20 @@ function TestCases() {
       group.rows.map((row) => ({ ...row, project: project.name, workstream: group.name })),
     ),
   );
+
+  /* The review card follows whatever the page is scoped to, and reads the local
+     rows rather than the saved report, so it moves with an edit before Save all
+     is pressed. With no project open it covers the register as a whole. */
+  const reviewScope = activeProject
+    ? activeProject.name
+    : `All projects · ${projects.length} ${projects.length === 1 ? "project" : "projects"}`;
+  const reviewGroups = activeProject ? activeProject.groups : projects.flatMap((p) => p.groups);
+  const reviewNote = dirty
+    ? "Live position, including edits not yet saved."
+    : `Live position · source updated ${new Date(dashboard.sourceUpdatedAt).toLocaleDateString(
+        "en-IN",
+        { day: "2-digit", month: "short", year: "numeric" },
+      )}`;
 
   function changeProjects(update: (current: TestProject[]) => TestProject[]) {
     setProjects(update);
@@ -302,6 +319,7 @@ function TestCases() {
                   defectStatus: "untracked",
                   owner: "",
                   updated: new Date().toISOString().slice(0, 10),
+                  finding: "",
                 },
               ],
             }
@@ -365,7 +383,7 @@ function TestCases() {
           spec={{
             base: "test-cases",
             title: "Test-case register",
-            subtitle: `${exportRows.length} case(s) exported from the ADIGRAMS 2.0 readiness dashboard`,
+            subtitle: `${exportRows.length} case(s) exported from the Tribal Tasks readiness dashboard`,
             columns: exportColumns,
             rows: exportRows,
           }}
@@ -422,7 +440,11 @@ function TestCases() {
         </div>
       </Toolbar>
 
-      <div className="grid gap-2.5">
+      {/* The register on the left, the review card as a right rail beside it.
+          Explicit placement keeps the card in column two across both rows, so
+          it sits beside the project list and stays with the table below it. */}
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-3">
+      <div className="grid gap-2.5 xl:col-start-1 xl:row-start-1">
         {projects.map((project) => {
           const rows = project.groups.flatMap((group) => group.rows);
           const tally = counts(rows);
@@ -480,9 +502,31 @@ function TestCases() {
                   <div><dt className="text-muted-foreground">Completed</dt><dd className="mt-0.5 font-semibold tabular-nums text-success">{tally.pass}</dd></div>
                   <div><dt className="text-muted-foreground">Needs attention</dt><dd className="mt-0.5 font-semibold tabular-nums text-warning">{tally.partial + tally.fail}</dd></div>
                 </dl>
-                <div className="flex items-center gap-2 lg:w-24 lg:justify-end">
+                <div className="flex items-center gap-2 lg:w-40 lg:justify-end">
                   <span className="text-sm font-bold tabular-nums">{progress}%</span>
                   <ChevronDown className={`size-5 text-muted-foreground transition-transform ${active ? "rotate-180" : ""}`} />
+                  {/* Downloads this project alone, as CSV or Word. The card's
+                      backdrop is a click target, so the menu opts back in to
+                      pointer events and keeps the click off the toggle. */}
+                  <div className="pointer-events-auto" onClick={(event) => event.stopPropagation()}>
+                    <ExportMenu
+                      label=""
+                      accessibleName={`Download ${project.name} as CSV or Word`}
+                      spec={{
+                        base: `test-cases-${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project"}`,
+                        title: `${project.name} test-case register`,
+                        subtitle: `${rows.length} case(s) across ${project.groups.length} workstream(s) — ${tally.pass} pass, ${tally.partial} partial, ${tally.notRun} not run, ${tally.fail} fail`,
+                        columns: exportColumns,
+                        rows: project.groups.flatMap((group) =>
+                          group.rows.map((row) => ({
+                            ...row,
+                            project: project.name,
+                            workstream: group.name,
+                          })),
+                        ),
+                      }}
+                    />
+                  </div>
                   <button
                     type="button"
                     title="Remove project"
@@ -625,17 +669,17 @@ function TestCases() {
                 </button>
               </div>
               <div className="kanban max-h-[64vh] overflow-auto rounded-md border border-border bg-surface">
-                <table className="report-table w-full min-w-[1120px] border-collapse bg-surface text-[13.5px]">
+                <table className="report-table w-full min-w-[1240px] border-collapse bg-surface text-[13.5px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-surface-2 text-left text-[11px] font-semibold uppercase text-muted-foreground">
                       <th scope="col" className="w-[100px] px-3.5 py-2.5">
                         ID
                       </th>
-                      <th scope="col" className="w-[30%] px-3.5 py-2.5">
+                      <th scope="col" className="w-[24%] px-3.5 py-2.5">
                         Test case
                       </th>
-                      <th scope="col" className="w-[20%] px-3.5 py-2.5">
-                        Workstream
+                      <th scope="col" className="w-[30%] px-3.5 py-2.5">
+                        Finding
                       </th>
                       <th scope="col" className="w-[120px] px-3.5 py-2.5">
                         Outcome
@@ -680,8 +724,20 @@ function TestCases() {
                             className="w-full bg-transparent font-medium text-foreground outline-none"
                           />
                         </td>
-                        <td className="px-3.5 py-2 align-middle text-muted-foreground">
-                          {activeGroup.name}
+                        {/* Findings run to a paragraph, so the cell keeps the
+                            single-line rhythm of the table and carries the rest
+                            in a tooltip rather than growing the row. */}
+                        <td className="px-3.5 py-2 align-middle">
+                          <input
+                            aria-label={`${row.id} finding`}
+                            value={row.finding}
+                            title={row.finding}
+                            placeholder="No finding recorded"
+                            onChange={(event) =>
+                              updateRow(activeGroup.id, row.id, { finding: event.target.value })
+                            }
+                            className="w-full bg-transparent text-muted-foreground outline-none placeholder:text-muted-foreground/50"
+                          />
                         </td>
                         <td className="px-3.5 py-2 align-middle">
                           <select
@@ -783,6 +839,13 @@ function TestCases() {
           ) : null}
         </div>
       )}
+        <ReviewStatus
+          scope={reviewScope}
+          note={reviewNote}
+          groups={reviewGroups}
+          className="mt-2.5 xl:sticky xl:top-4 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:mt-0 xl:self-start"
+        />
+      </div>
     </Shell>
   );
 }

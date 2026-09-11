@@ -101,6 +101,10 @@ const testCaseRow = z.object({
   ]),
   owner: z.string().default(""),
   updated: z.string().nullable().default(null),
+  /* The report's own finding for the case, carried on the row so the register
+     shows why a case reads the way it does without a second lookup. Blank on
+     rows raised in the dashboard, which have no report record behind them. */
+  finding: z.string().default(""),
 });
 
 const testCaseGroup = z.object({
@@ -335,12 +339,34 @@ export function deriveDashboard(raw: z.infer<typeof reportSchema>, text = plainT
         defectStatus: getBugStatus(row),
         owner: row.tracking?.byName || "",
         updated: toDay(row.tracking?.at),
+        finding: text(row.edits?.finding || row.original.finding),
       })),
   }));
+  /* A workspace saved before the register carried findings has rows without
+     one; fill those from the report record of the same ID so the column reads
+     correctly without waiting for the next save. An edited row wins, because a
+     blank finding there is a deliberate clearing. */
+  const reportFindings = new Map(
+    cases.map((c) => [c.caseId, text(c.edits?.finding || c.original.finding)]),
+  );
+  const withFindings = (groups: z.infer<typeof testCaseGroup>[]) =>
+    groups.map((group) => ({
+      ...group,
+      rows: group.rows.map((row) =>
+        row.finding ? row : { ...row, finding: reportFindings.get(row.id) || "" },
+      ),
+    }));
   const testCaseProjects = raw.testCaseWorkspace?.projects?.length
-    ? raw.testCaseWorkspace.projects
+    ? raw.testCaseWorkspace.projects.map((p) => ({ ...p, groups: withFindings(p.groups) }))
     : raw.testCaseWorkspace?.groups
-      ? [{ id: "PROJECT-1", name: "ADIGRAM", date: null, groups: raw.testCaseWorkspace.groups }]
+      ? [
+          {
+            id: "PROJECT-1",
+            name: "ADIGRAM",
+            date: null,
+            groups: withFindings(raw.testCaseWorkspace.groups),
+          },
+        ]
       : [{ id: "PROJECT-1", name: "ADIGRAM", date: null, groups: reportGroups }];
   const workstreams = testCaseProjects.flatMap((project) =>
     project.groups.map((group) => ({

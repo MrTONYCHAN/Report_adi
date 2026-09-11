@@ -113,6 +113,7 @@ function testCaseWorkspace(input) {
                 : "untracked",
               owner: text(row.owner, 120),
               updated: day(row.updated),
+              finding: text(row.finding, 2000),
             };
           }),
         };

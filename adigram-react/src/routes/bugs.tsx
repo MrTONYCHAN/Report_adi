@@ -30,13 +30,13 @@ import type { Column } from "@/lib/export";
 export const Route = createFileRoute("/bugs")({
   head: () => ({
     meta: [
-      { title: "Bugs — ADIGRAMS 2.0 Readiness" },
+      { title: "Bugs — Tribal Tasks Readiness" },
       {
         name: "description",
         content:
-          "Defect register with severity, owning module, assignee, schedule and ageing for the ADIGRAMS 2.0 go-live review.",
+          "Defect register with severity, owning module, assignee, schedule and ageing for the Tribal Tasks go-live review.",
       },
-      { property: "og:title", content: "Bugs — ADIGRAMS 2.0 Readiness" },
+      { property: "og:title", content: "Bugs — Tribal Tasks Readiness" },
       {
         property: "og:description",
         content: "Severity-ranked defect register with ageing, due dates and ownership.",
@@ -132,7 +132,7 @@ function Bugs() {
           spec={{
             base: "defects",
             title: "Defect register",
-            subtitle: `${rows.length} defect(s) · exported from the ADIGRAMS 2.0 readiness dashboard`,
+            subtitle: `${rows.length} defect(s) · exported from the Tribal Tasks readiness dashboard`,
             columns,
             rows,
             extraSections: [

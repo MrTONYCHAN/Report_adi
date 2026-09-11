@@ -74,12 +74,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ADIGRAMS 2.0 Readiness" },
+      { title: "Tribal Tasks Readiness" },
       {
         name: "description",
         content: "Go-live readiness, engineering ownership and quality registers.",
       },
-      { property: "og:title", content: "ADIGRAMS 2.0 Readiness" },
+      { property: "og:title", content: "Tribal Tasks Readiness" },
       {
         property: "og:description",
         content: "Go-live readiness, engineering ownership and quality registers.",

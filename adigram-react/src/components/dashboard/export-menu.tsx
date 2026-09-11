@@ -25,10 +25,13 @@ export type ExportSpec<T> = {
 export function ExportMenu<T>({
   spec,
   label = "Export",
+  accessibleName,
   className = "",
 }: {
   spec: ExportSpec<T>;
   label?: string;
+  /** Needed where the trigger is icon-only, so the button still has a name. */
+  accessibleName?: string;
   className?: string;
 }) {
   const [busy, setBusy] = useState<null | "csv" | "docx">(null);
@@ -64,7 +67,7 @@ export function ExportMenu<T>({
         <DropdownMenuTrigger asChild>
           <button
             className="press inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-xs font-semibold transition-colors hover:border-primary/40"
-            aria-label={`${label} the current view`}
+            aria-label={accessibleName ?? `${label} the current view`}
           >
             {busy ? (
               <Loader2 className="size-3.5 animate-spin" />

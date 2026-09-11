@@ -24,13 +24,13 @@ import { STATUS_LABELS, useDashboard } from "@/lib/data";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ADIGRAMS 2.0 — Go-Live Readiness Dashboard" },
+      { title: "Tribal Tasks — Go-Live Readiness Dashboard" },
       {
         name: "description",
         content:
-          "Live readiness dashboard for ADIGRAMS 2.0: workstream health, test-case pass rates, open bugs, tasks and developer workload.",
+          "Live readiness dashboard for Tribal Tasks: workstream health, test-case pass rates, open bugs, tasks and developer workload.",
       },
-      { property: "og:title", content: "ADIGRAMS 2.0 — Go-Live Readiness Dashboard" },
+      { property: "og:title", content: "Tribal Tasks — Go-Live Readiness Dashboard" },
       {
         property: "og:description",
         content: "Workstream health, test coverage, bugs and developer workload in one view.",
@@ -78,7 +78,7 @@ function Overview() {
           label="Status pack"
           spec={{
             base: "readiness-pack",
-            title: "ADIGRAMS 2.0 go-live readiness",
+            title: "Tribal Tasks go-live readiness",
             subtitle: `${readiness}% of ${totals.testCases} assessed cases passed · ${totals.openBugs} defects open`,
             columns: [
               {
@@ -392,6 +392,10 @@ function Overview() {
       )}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        {/* The Tasks section is commented out of the app. Restoring it means
+            uncommenting this panel and dropping the col-span-3 added to the
+            severity panel below, which widened to fill the row it vacated. */}
+        {/*
         <Panel
           title="Open remediation"
           subtitle={`${openTasks.length} task${openTasks.length === 1 ? "" : "s"} still to close`}
@@ -440,10 +444,12 @@ function Overview() {
             </ul>
           )}
         </Panel>
+        */}
 
         <Panel
           title="Defect severity mix"
           subtitle={`${bugs.length} defects on the register`}
+          className="xl:col-span-3"
           delay={340}
         >
           {severityMix.length === 0 ? (

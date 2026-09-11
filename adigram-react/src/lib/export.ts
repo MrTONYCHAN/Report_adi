@@ -122,7 +122,7 @@ export async function downloadDocx(
     new Paragraph({
       children: [
         new TextRun({
-          text: `Generated ${new Date().toLocaleString("en-IN")} · ADIGRAMS 2.0 readiness dashboard`,
+          text: `Generated ${new Date().toLocaleString("en-IN")} · Tribal Tasks readiness dashboard`,
           color: "8A90A0",
           size: 18,
         }),
@@ -150,7 +150,7 @@ export async function downloadDocx(
   }
 
   const document = new Document({
-    creator: "ADIGRAMS readiness dashboard",
+    creator: "Tribal Tasks readiness dashboard",
     title,
     description: subtitle,
     sections: [{ properties: {}, children }],

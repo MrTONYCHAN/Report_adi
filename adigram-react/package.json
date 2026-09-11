@@ -19,6 +19,7 @@
     "db:export": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs export",
     "db:check": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs check",
     "db:local": "node scripts/local-mongo.mjs",
+    "db:backfill-findings": "node --env-file=.env.local scripts/backfill-findings.mjs",
     "db:merge-browser": "node --env-file=.env.local --experimental-strip-types scripts/database.mjs merge-browser"
   },
   "overrides": {

@@ -26,7 +26,7 @@ import type { Column } from "@/lib/export";
 export const Route = createFileRoute("/developers")({
   head: () => ({
     meta: [
-      { title: "Developers - ADIGRAMS 2.0 Readiness" },
+      { title: "Developers - Tribal Tasks Readiness" },
       { name: "description", content: "Editable engineering roster and workload overview." },
     ],
   }),
